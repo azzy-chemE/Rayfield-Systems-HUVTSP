@@ -28,6 +28,9 @@ A comprehensive maintenance automation platform for renewable energy plants with
 - **Data**: Pandas, scikit-learn
 - **Deployment**: Ready for Render/Github Pages
 
+## What Isn't Working Yet
+- **Data Analysis, Linear Regression, and Anomaly Detection Features**: These are currently functional in a Google CoLab file and will be integrated smoothly into the website's backend soon.
+
 ## Team
 
 Harvard Undergraduate Ventures-Tech Summer Program
