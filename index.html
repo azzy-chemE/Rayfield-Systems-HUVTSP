@@ -50,8 +50,9 @@
                     <option value="hydro">Hydroelectric</option>
                     <option value="thermal">Thermal Plant</option>
                 </select>
-                <label for="site-specs">Insert Data on Specs of Everything on the Site</label>
-                <textarea id="site-specs" name="site-specs" rows="4" placeholder="E.g., panel count, inverter type, capacity, etc." required></textarea>
+                <label for="site-specs">Upload CSV File with Site Specifications</label>
+                <input type="file" id="site-specs" name="site-specs" accept=".csv" required>
+                <small>Please upload a CSV file containing site specifications (e.g., panel count, inverter type, capacity, etc.)</small>
                 <button type="submit">Save Platform Setup</button>
             </form>
         </section>
