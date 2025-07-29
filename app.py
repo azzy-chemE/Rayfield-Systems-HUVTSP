@@ -16,27 +16,20 @@ if not os.getenv("OPENROUTER_API_KEY"):
     print("Please set the environment variable for production deployment.")
     print("For local development, create a .env file or set the environment variable.")
 
-# Serve static files
+# Serve static files from root directory
 @app.route('/')
 def index():
     try:
-        return app.send_static_file('index.html')
+        return send_from_directory('.', 'index.html')
     except Exception as e:
         return jsonify({'error': f'Failed to serve index.html: {str(e)}'}), 500
 
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    try:
-        return app.send_static_file(filename)
-    except Exception as e:
-        return jsonify({'error': f'Failed to serve {filename}: {str(e)}'}), 500
-
 @app.route('/<path:filename>')
-def other_files(filename):
+def serve_files(filename):
     # Only serve specific static files, not API routes
     if filename in ['index.html', 'script.js', 'style.css', 'logo.png']:
         try:
-            return app.send_static_file(filename)
+            return send_from_directory('.', filename)
         except Exception as e:
             return jsonify({'error': f'Failed to serve {filename}: {str(e)}'}), 500
     else:
@@ -190,18 +183,4 @@ def get_status():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # Move static files to correct location for Flask
-    import shutil
-    import os
-    
-    # Create static directory if it doesn't exist
-    if not os.path.exists('static'):
-        os.makedirs('static')
-    
-    # Copy static files to Flask static directory
-    static_files = ['index.html', 'script.js', 'style.css', 'logo.png']
-    for file in static_files:
-        if os.path.exists(file):
-            shutil.copy2(file, f'static/{file}')
-    
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 
