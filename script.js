@@ -174,6 +174,45 @@ if (runAIButton) {
                     </div>
                 `;
                 
+                // Add charts section if charts are available
+                if (result.charts && result.charts.length > 0) {
+                    resultHtml += `
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-top: 1rem;">
+                            <h3 style="margin-top: 0; color: #1a1a1a;">Data Analysis Charts</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    `;
+                    
+                    result.charts.forEach(chartPath => {
+                        const chartName = chartPath.split('/').pop().replace('.png', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        resultHtml += `
+                            <div style="background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <h4 style="margin-top: 0; color: #1a1a1a; font-size: 1.1rem;">${chartName}</h4>
+                                <img src="${chartPath}" alt="${chartName}" style="width: 100%; height: auto; border-radius: 4px;" />
+                            </div>
+                        `;
+                    });
+                    
+                    resultHtml += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Add CSV analysis results if available
+                if (result.csv_stats) {
+                    resultHtml += `
+                        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                            <h4 style="margin-top: 0; color: #1a1a1a;">CSV Data Analysis</h4>
+                            <ul style="margin: 0; padding-left: 1.5rem;">
+                                <li>Data Points: ${result.csv_stats.data_points || 'N/A'}</li>
+                                <li>Features: ${result.csv_stats.features || 'N/A'}</li>
+                                <li>Target Variable: ${result.csv_stats.target_column || 'N/A'}</li>
+                                <li>Date Range: ${result.csv_stats.date_range ? `${result.csv_stats.date_range.start} to ${result.csv_stats.date_range.end}` : 'N/A'}</li>
+                            </ul>
+                        </div>
+                    `;
+                }
+                
                 aiResult.innerHTML = resultHtml;
                 aiStatus = 'analysis-complete';
                 addAlert('AI Analysis Complete', 'Comprehensive analysis generated using Qwen AI model');

@@ -36,6 +36,14 @@ def serve_files(filename):
     else:
         return jsonify({'error': 'File not found'}), 404
 
+@app.route('/static/charts/<path:filename>')
+def serve_charts(filename):
+    """Serve chart files from static/charts directory"""
+    try:
+        return send_from_directory('static/charts', filename)
+    except Exception as e:
+        return jsonify({'error': f'Failed to serve chart {filename}: {str(e)}'}), 500
+
 # API endpoint for AI analysis
 @app.route('/api/run-ai-analysis', methods=['POST'])
 def run_ai_analysis():
@@ -81,7 +89,7 @@ def run_ai_analysis():
 
 def run_ai_summary_generator(platform_setup, inspections):
     """
-    Run the AI summary generator and return results
+    Run the AI summary generator and return results with charts
     """
     try:
         # Check if cleaned_data.csv exists
@@ -102,6 +110,7 @@ def run_ai_summary_generator(platform_setup, inspections):
         
         # Import and run the AI summary generator
         from ai_summary_generator import generate_weekly_summary, generate_weekly_summary_with_user_data, generate_summary_from_user_data_only, qwen_summary
+        from energy_analysis import analyze_energy_csv
         
         # Load data
         df = pd.read_csv('cleaned_data.csv')
@@ -111,20 +120,100 @@ def run_ai_summary_generator(platform_setup, inspections):
         print(f"Platform setup: {platform_setup}")
         print(f"Inspections: {len(inspections)} items")
         
-        # Generate summary using ONLY user data
-        summary, stats = generate_summary_from_user_data_only(
-            platform_setup, 
-            inspections, 
-            "Renewable Energy Site"
-        )
+        # Analyze the CSV data and generate charts
+        print("Analyzing CSV data and generating charts...")
+        analysis_results = analyze_energy_csv('cleaned_data.csv', output_dir='static/charts')
+        
+        if 'error' in analysis_results:
+            print(f"Error in CSV analysis: {analysis_results['error']}")
+            # Continue with user data only if CSV analysis fails
+            summary, stats = generate_summary_from_user_data_only(
+                platform_setup, 
+                inspections, 
+                "Renewable Energy Site"
+            )
+        else:
+            # Generate comprehensive analysis with CSV data
+            # Create a comprehensive prompt that includes the analysis results
+            csv_stats = analysis_results.get('stats', {})
+            model_performance = analysis_results.get('analysis_results', {}).get('linear_regression', {})
+            
+            # Create a comprehensive prompt
+            prompt = f"""
+            Analyze the following renewable energy site with comprehensive data analysis:
+
+            SITE CONFIGURATION:
+            - Site Type: {platform_setup.get('siteType', 'renewable')}
+            - Site Specifications: {platform_setup.get('siteSpecs', 'Standard renewable energy site')}
+
+            CSV DATA ANALYSIS RESULTS:
+            - Data points analyzed: {csv_stats.get('data_points', 'N/A')}
+            - Features identified: {csv_stats.get('features', 'N/A')}
+            - Target variable: {csv_stats.get('target_column', 'N/A')}
+            - Date range: {csv_stats.get('date_range', {}).get('start', 'N/A')} to {csv_stats.get('date_range', {}).get('end', 'N/A')}
+
+            MODEL PERFORMANCE:
+            - Mean Squared Error: {model_performance.get('mse', 'N/A'):.2f}
+            - R² Score: {model_performance.get('r2', 'N/A'):.4f}
+
+            INSPECTION DATA:
+            {chr(10).join([f"- Date: {i.get('date', 'Unknown')} | Status: {i.get('status', 'Unknown')} | Notes: {i.get('notes', 'No notes')}" for i in inspections])}
+
+            Please provide a comprehensive analysis that includes:
+            1. Overall performance assessment based on the CSV data analysis
+            2. Analysis of inspection findings and their correlation with performance data
+            3. Model performance evaluation and feature importance insights
+            4. Specific recommendations for maintenance or optimization
+            5. Key insights for operational decision-making
+            6. Risk assessment based on inspection status and performance metrics
+            7. Anomaly detection and potential causes
+            8. Predictive maintenance recommendations
+
+            Format the response in a clear, professional manner suitable for maintenance teams.
+            Focus on actionable insights that maintenance teams can use immediately.
+            """
+            
+            # Generate AI summary
+            summary = qwen_summary(prompt)
+            
+            # Prepare comprehensive stats
+            stats = {
+                'csv_analysis': csv_stats,
+                'model_performance': model_performance,
+                'site_type': platform_setup.get('siteType', 'energy'),
+                'inspections_count': len(inspections),
+                'critical_inspections': len([i for i in inspections if i.get('status') == 'critical']),
+                'concern_inspections': len([i for i in inspections if 'concern' in i.get('status', '')]),
+                'normal_inspections': len([i for i in inspections if i.get('status') == 'normal']),
+                'analysis_success': True
+            }
+            
+            # If API fails, use mock summary
+            if not summary:
+                print("API failed, using mock summary...")
+                summary = create_mock_summary_with_csv_analysis(
+                    analysis_results, platform_setup, inspections, "Renewable Energy Site"
+                )
         
         print(f"Summary generated: {bool(summary)}")
+        
+        # Get chart file paths
+        chart_files = []
+        if 'output_dir' in analysis_results:
+            charts_dir = analysis_results['output_dir']
+            if os.path.exists(charts_dir):
+                for file in os.listdir(charts_dir):
+                    if file.endswith('.png'):
+                        chart_files.append(f'/static/charts/{file}')
         
         if summary:
             return {
                 'success': True,
                 'summary': summary,
-                'stats': stats
+                'stats': stats,
+                'charts': chart_files,
+                'analysis_results': analysis_results.get('analysis_results', {}),
+                'csv_stats': analysis_results.get('stats', {})
             }
         else:
             return {
