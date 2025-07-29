@@ -4,3 +4,4 @@ flask>=2.3.0
 python-dotenv>=1.0.0
 gunicorn>=21.2.0
 matplotlib>=3.7.0
+seaborn>=0.12.0
