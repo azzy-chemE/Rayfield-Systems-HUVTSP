@@ -168,44 +168,63 @@ class EnergyDataAnalyzer:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         
-        # Set style
+        # Set style with memory optimization
         plt.style.use('default')
         sns.set_palette("husl")
         
-        # 1. Time series plot
-        if self.datetime_column:
-            self._plot_time_series(output_dir)
+        # Reduce memory usage by using smaller figure sizes and lower DPI
+        plt.rcParams['figure.dpi'] = 100  # Lower DPI for smaller files
+        plt.rcParams['figure.figsize'] = (8, 6)  # Smaller default figure size
         
-        # 2. Linear regression results
-        if 'linear_regression' in self.analysis_results:
-            self._plot_regression_results(output_dir)
-        
-        # 3. Feature importance
-        if 'linear_regression' in self.analysis_results:
-            self._plot_feature_importance(output_dir)
-        
-        # 4. Rolling averages
-        if self.target_column:
-            self._plot_rolling_averages(output_dir)
-        
-        # 5. Correlation heatmap
-        self._plot_correlation_heatmap(output_dir)
-        
-        # 6. Distribution plots
-        self._plot_distributions(output_dir)
-        
-        print(f"All plots saved to {output_dir}/")
+        try:
+            # 1. Time series plot
+            if self.datetime_column:
+                self._plot_time_series(output_dir)
+            
+            # 2. Linear regression results
+            if 'linear_regression' in self.analysis_results:
+                self._plot_regression_results(output_dir)
+            
+            # 3. Feature importance
+            if 'linear_regression' in self.analysis_results:
+                self._plot_feature_importance(output_dir)
+            
+            # 4. Rolling averages
+            if self.target_column:
+                self._plot_rolling_averages(output_dir)
+            
+            # 5. Correlation heatmap
+            self._plot_correlation_heatmap(output_dir)
+            
+            # 6. Distribution plots
+            self._plot_distributions(output_dir)
+            
+            print(f"All plots saved to {output_dir}/")
+            
+        except Exception as e:
+            print(f"Error generating plots: {str(e)}")
+        finally:
+            # Clean up matplotlib memory
+            plt.close('all')
+            import gc
+            gc.collect()
     
     def _plot_time_series(self, output_dir):
         """Plot time series of the target variable"""
-        plt.figure(figsize=(12, 6))
-        plt.plot(self.df[self.datetime_column], self.df[self.target_column], alpha=0.7)
+        plt.figure(figsize=(10, 5))
+        # Sample data if too large to reduce memory usage
+        if len(self.df) > 10000:
+            sample_df = self.df.sample(n=10000, random_state=42)
+        else:
+            sample_df = self.df
+            
+        plt.plot(sample_df[self.datetime_column], sample_df[self.target_column], alpha=0.7, linewidth=0.5)
         plt.title(f'{self.target_column} Over Time')
         plt.xlabel('Time')
         plt.ylabel(self.target_column)
         plt.xticks(rotation=45)
         plt.tight_layout()
-        plt.savefig(f'{output_dir}/time_series.png', dpi=300, bbox_inches='tight')
+        plt.savefig(f'{output_dir}/time_series.png', dpi=150, bbox_inches='tight')
         plt.close()
     
     def _plot_regression_results(self, output_dir):
@@ -214,11 +233,11 @@ class EnergyDataAnalyzer:
         actual = results['predictions']['actual']
         predicted = results['predictions']['predicted']
         
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=(8, 6))
         
         # Scatter plot
         plt.subplot(2, 2, 1)
-        plt.scatter(actual, predicted, alpha=0.5)
+        plt.scatter(actual, predicted, alpha=0.5, s=20)
         plt.plot([actual.min(), actual.max()], [actual.min(), actual.max()], 'r--', lw=2)
         plt.xlabel('Actual Values')
         plt.ylabel('Predicted Values')
@@ -227,7 +246,7 @@ class EnergyDataAnalyzer:
         # Residuals plot
         plt.subplot(2, 2, 2)
         residuals = actual - predicted
-        plt.scatter(predicted, residuals, alpha=0.5)
+        plt.scatter(predicted, residuals, alpha=0.5, s=20)
         plt.axhline(y=0, color='r', linestyle='--')
         plt.xlabel('Predicted Values')
         plt.ylabel('Residuals')
@@ -235,21 +254,21 @@ class EnergyDataAnalyzer:
         
         # Metrics text
         plt.subplot(2, 2, 3)
-        plt.text(0.1, 0.8, f'MSE: {results["mse"]:.2f}', fontsize=12)
-        plt.text(0.1, 0.6, f'R²: {results["r2"]:.4f}', fontsize=12)
-        plt.text(0.1, 0.4, f'Features: {len(self.feature_columns)}', fontsize=12)
+        plt.text(0.1, 0.8, f'MSE: {results["mse"]:.2f}', fontsize=10)
+        plt.text(0.1, 0.6, f'R²: {results["r2"]:.4f}', fontsize=10)
+        plt.text(0.1, 0.4, f'Features: {len(self.feature_columns)}', fontsize=10)
         plt.axis('off')
         plt.title('Model Metrics')
         
         # Histogram of residuals
         plt.subplot(2, 2, 4)
-        plt.hist(residuals, bins=30, alpha=0.7, edgecolor='black')
+        plt.hist(residuals, bins=20, alpha=0.7, edgecolor='black')
         plt.xlabel('Residuals')
         plt.ylabel('Frequency')
         plt.title('Residuals Distribution')
         
         plt.tight_layout()
-        plt.savefig(f'{output_dir}/regression_results.png', dpi=300, bbox_inches='tight')
+        plt.savefig(f'{output_dir}/regression_results.png', dpi=150, bbox_inches='tight')
         plt.close()
     
     def _plot_feature_importance(self, output_dir):

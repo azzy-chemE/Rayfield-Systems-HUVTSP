@@ -102,7 +102,8 @@ if (runAIButton) {
                 },
                 body: JSON.stringify({
                     platformSetup: platformSetup,
-                    inspections: inspections
+                    inspections: inspections,
+                    lightweight: false  // Set to true for memory-constrained environments
                 })
             });
             

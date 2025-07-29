@@ -58,6 +58,7 @@ def run_ai_analysis():
         
         platform_setup = data.get('platformSetup')
         inspections = data.get('inspections', [])
+        lightweight_mode = data.get('lightweight', False)  # New parameter for memory-constrained mode
         
         if not platform_setup:
             return jsonify({'error': 'Platform setup required'}), 400
@@ -66,7 +67,7 @@ def run_ai_analysis():
             return jsonify({'error': 'Inspection data required'}), 400
         
         # Run the AI summary generator with user data
-        result = run_ai_summary_generator(platform_setup, inspections)
+        result = run_ai_summary_generator(platform_setup, inspections, lightweight_mode)
         
         if result['success']:
             return jsonify({
@@ -87,7 +88,7 @@ def run_ai_analysis():
         print(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
-def run_ai_summary_generator(platform_setup, inspections):
+def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False):
     """
     Run the AI summary generator and return results with charts
     """
@@ -121,8 +122,31 @@ def run_ai_summary_generator(platform_setup, inspections):
         print(f"Inspections: {len(inspections)} items")
         
         # Analyze the CSV data and generate charts
-        print("Analyzing CSV data and generating charts...")
-        analysis_results = analyze_energy_csv('cleaned_data.csv', output_dir='static/charts')
+        if lightweight_mode:
+            print("Running in lightweight mode - skipping chart generation...")
+            analysis_results = {'error': 'lightweight_mode'}
+        else:
+            print("Analyzing CSV data and generating charts...")
+            try:
+                analysis_results = analyze_energy_csv('cleaned_data.csv', output_dir='static/charts')
+            except MemoryError:
+                print("Memory error during chart generation, using fallback...")
+                # Return basic analysis without charts
+                return {
+                    'success': True,
+                    'summary': "Analysis completed but chart generation failed due to memory constraints. Please try with a smaller dataset or restart the server.",
+                    'stats': {
+                        'site_type': platform_setup.get('siteType', 'energy'),
+                        'inspections_count': len(inspections),
+                        'critical_inspections': len([i for i in inspections if i.get('status') == 'critical']),
+                        'concern_inspections': len([i for i in inspections if 'concern' in i.get('status', '')]),
+                        'normal_inspections': len([i for i in inspections if i.get('status') == 'normal']),
+                        'memory_error': True
+                    },
+                    'charts': [],
+                    'analysis_results': {},
+                    'csv_stats': {}
+                }
         
         if 'error' in analysis_results:
             print(f"Error in CSV analysis: {analysis_results['error']}")
@@ -273,4 +297,15 @@ def get_status():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 
+    # Memory-efficient configuration
+    import gc
+    gc.collect()  # Clean up memory before starting
+    
+    # Use threaded mode instead of processes for lower memory usage
+    app.run(
+        debug=True, 
+        host='0.0.0.0', 
+        port=int(os.environ.get('PORT', 5000)),
+        threaded=True,  # Use threads instead of processes
+        use_reloader=False  # Disable reloader to reduce memory usage
+    ) 
