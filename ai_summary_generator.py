@@ -63,12 +63,12 @@ def qwen_summary(prompt_text):
 
 def create_summary_prompt(site_name, avg_output, anomalies, peak_output, additional_data=None):
     """
-    Create a structured prompt for wind turbine data summary
+    Create a structured prompt for a green energy data summary
     """
     prompt = f"""
-    Summarize the following wind turbine report for {site_name}:
+    Summarize the .CSV and/or information that the user provided {site_name}:
     
-    Key Metrics:
+    Include key metrics, such as:
     - Average output: {avg_output} kWh
     - Peak output: {peak_output} kWh
     - Anomalies detected: {anomalies}
@@ -81,6 +81,7 @@ def create_summary_prompt(site_name, avg_output, anomalies, peak_output, additio
     2. Anomaly analysis and potential causes
     3. Recommendations for maintenance or optimization
     4. Key insights for operational decision-making
+    5. Anything else important that maintenance teams and chemical engineers of the energy facility should know
     
     Format the response in a clear, professional manner suitable for maintenance teams.
     """
