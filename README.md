@@ -15,7 +15,7 @@ A comprehensive maintenance automation platform for renewable energy plants with
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd rayfield-gang
+   cd Rayfield-Systems-HUVTSP
    ```
 
 2. **Install dependencies**
@@ -44,8 +44,8 @@ A comprehensive maintenance automation platform for renewable energy plants with
 
 1. **Setup Platform**: Configure your renewable energy site type and specifications
 2. **Add Inspections**: Log maintenance inspections with dates, notes, and status
-3. **Run AI Analysis**: Get comprehensive AI-powered analysis based on your inputs. Metrics are AI determined based on site type, summarized at bottom under Ai analysis.
-4. **View Results**: See dynamic analysis that changes based on your configuration. Outputs cleaned data and graphs if csv/pdf imported(work in progress).
+3. **Run AI Analysis**: Get comprehensive AI-powered analysis based on your inputs. Metrics are AI determined based on site type, summarized at bottom under Ai analysis
+4. **View Results**: See dynamic analysis that changes based on your configuration. Outputs cleaned data and graphs if csv/pdf imported(work in progress)
 
 ## Technology Stack
 
