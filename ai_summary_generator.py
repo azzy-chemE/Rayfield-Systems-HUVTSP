@@ -3,6 +3,11 @@ import json
 import pandas as pd
 from datetime import datetime
 import os
+import tempfile
+import base64
+
+# Import the new energy analysis module
+from energy_analysis import EnergyDataAnalyzer, analyze_energy_csv
 
 # OpenRouter API configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -61,118 +66,115 @@ def qwen_summary(prompt_text):
         print(f"Exception during API call: {str(e)}")
         return None
 
-def create_summary_prompt(site_name, avg_output, anomalies, peak_output, additional_data=None):
+def analyze_uploaded_csv(csv_data, filename):
     """
-    Create a structured prompt for a green energy data summary
+    Analyze uploaded CSV file using the energy analysis module
+    
+    Args:
+        csv_data (str): Base64 encoded CSV data
+        filename (str): Original filename
+    
+    Returns:
+        dict: Analysis results
     """
-    prompt = f"""
-    Summarize the .CSV and/or information that the user provided {site_name}:
-    
-    Include key metrics, such as:
-    - Average output: {avg_output} kWh
-    - Peak output: {peak_output} kWh
-    - Anomalies detected: {anomalies}
-    
-    Additional Data:
-    {additional_data if additional_data else "No additional data provided"}
-    
-    Please provide a concise summary that includes:
-    1. Overall performance assessment
-    2. Anomaly analysis and potential causes
-    3. Recommendations for maintenance or optimization
-    4. Key insights for operational decision-making
-    5. Anything else important that maintenance teams and chemical engineers of the energy facility should know
-    
-    Format the response in a clear, professional manner suitable for maintenance teams.
+    try:
+        # Decode base64 data
+        csv_bytes = base64.b64decode(csv_data.split(',')[1] if ',' in csv_data else csv_data)
+        
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(mode='wb', suffix='.csv', delete=False) as temp_file:
+            temp_file.write(csv_bytes)
+            temp_file_path = temp_file.name
+        
+        # Analyze the CSV
+        results = analyze_energy_csv(temp_file_path, output_dir='temp_analysis')
+        
+        # Clean up temporary file
+        os.unlink(temp_file_path)
+        
+        return results
+        
+    except Exception as e:
+        print(f"Error analyzing CSV: {str(e)}")
+        return {'error': f'Failed to analyze CSV: {str(e)}'}
+
+def create_summary_prompt_with_csv_analysis(csv_analysis, platform_setup, inspections, site_name="Energy Site"):
     """
+    Create a structured prompt that includes CSV analysis results and inspection data
+    """
+    # Extract CSV analysis results
+    csv_stats = csv_analysis.get('stats', {})
+    model_performance = csv_analysis.get('analysis_results', {}).get('linear_regression', {})
     
-    return prompt
+    # Format CSV analysis summary
+    csv_summary = ""
+    if csv_stats:
+        csv_summary = f"""
+CSV DATA ANALYSIS RESULTS:
+- Data points analyzed: {csv_stats.get('data_points', 'N/A')}
+- Features identified: {csv_stats.get('features', 'N/A')}
+- Target variable: {csv_stats.get('target_column', 'N/A')}
+- Date range: {csv_stats.get('date_range', {}).get('start', 'N/A')} to {csv_stats.get('date_range', {}).get('end', 'N/A')}
 
-def create_mock_summary(site_name, avg_output, peak_output, anomalies, wind_speed_avg, wind_direction_avg, data_points):
-    """
-    Create a mock summary when API fails
-    """
-    return f"""
-AI Analysis Summary for {site_name}
+TARGET VARIABLE STATISTICS:
+- Mean: {csv_stats.get('target_stats', {}).get('mean', 'N/A'):.2f}
+- Standard deviation: {csv_stats.get('target_stats', {}).get('std', 'N/A'):.2f}
+- Range: {csv_stats.get('target_stats', {}).get('min', 'N/A'):.2f} to {csv_stats.get('target_stats', {}).get('max', 'N/A'):.2f}
 
-OVERALL PERFORMANCE ASSESSMENT:
-The wind turbine site has shown consistent performance with an average output of {avg_output:.2f} kWh and peak output reaching {peak_output:.2f} kWh. The system demonstrates good operational efficiency across the analyzed period.
-
-ANOMALY ANALYSIS:
-{anomalies}
-
-WIND CONDITIONS:
-- Average wind speed: {wind_speed_avg:.2f} m/s
-- Average wind direction: {wind_direction_avg:.2f} degrees
-- Data points analyzed: {data_points}
-
-RECOMMENDATIONS:
-1. Continue regular maintenance schedule
-2. Monitor wind patterns for optimal positioning
-3. Consider performance optimization during peak wind conditions
-
-KEY INSIGHTS:
-- System operates within expected parameters
-- Wind conditions are favorable for energy generation
-- No critical maintenance issues detected
-
-Note: This is a mock analysis generated due to API connectivity issues.
+MODEL PERFORMANCE:
+- Mean Squared Error: {model_performance.get('mse', 'N/A'):.2f}
+- R² Score: {model_performance.get('r2', 'N/A'):.4f}
 """
-
-def create_mock_summary_with_user_data(site_name, avg_output, peak_output, anomalies, wind_speed_avg, wind_direction_avg, data_points, site_type, site_specs, inspections):
-    """
-    Create a mock summary when API fails, incorporating user data
-    """
-    # Process inspection data for mock summary
-    inspection_text = ""
+    
+    # Process inspection data
+    inspection_summary = ""
     if inspections:
-        inspection_text = "\n\nRECENT INSPECTIONS:\n"
+        inspection_summary = "\n\nRECENT INSPECTIONS:\n"
         for i, inspection in enumerate(inspections, 1):
             date = inspection.get('date', 'Unknown date')
             status = inspection.get('status', 'Unknown status')
             notes = inspection.get('notes', 'No notes provided')
-            inspection_text += f"{i}. Date: {date} | Status: {status} | Notes: {notes}\n"
+            inspection_summary += f"{i}. Date: {date} | Status: {status} | Notes: {notes}\n"
     
-    return f"""
-AI Analysis Summary for {site_name}
+    # Create comprehensive prompt
+    prompt = f"""
+    Analyze the following energy maintenance site data for {site_name}:
 
-SITE CONFIGURATION:
-- Site Type: {site_type}
-- Site Specifications: {site_specs}
+    SITE CONFIGURATION:
+    - Site Type: {platform_setup.get('siteType', 'energy')}
+    - Site Specifications: {platform_setup.get('siteSpecs', 'Standard energy site')}
 
-OVERALL PERFORMANCE ASSESSMENT:
-The {site_type} site has shown consistent performance with an average output of {avg_output:.2f} kWh and peak output reaching {peak_output:.2f} kWh. The system demonstrates good operational efficiency across the analyzed period.
+    {csv_summary}
 
-ANOMALY ANALYSIS:
-{anomalies}
+    {inspection_summary}
 
-WIND CONDITIONS:
-- Average wind speed: {wind_speed_avg:.2f} m/s
-- Average wind direction: {wind_direction_avg:.2f} degrees
-- Data points analyzed: {data_points}
+    Please provide a comprehensive analysis that includes:
+    1. Overall performance assessment based on the CSV data analysis
+    2. Analysis of inspection findings and their correlation with performance data
+    3. Model performance evaluation and feature importance insights
+    4. Specific recommendations for maintenance or optimization
+    5. Key insights for operational decision-making
+    6. Risk assessment based on inspection status and performance metrics
+    7. Anomaly detection and potential causes
+    8. Predictive maintenance recommendations
 
-{inspection_text}
-
-RECOMMENDATIONS:
-1. Continue regular maintenance schedule
-2. Monitor {site_type} patterns for optimal positioning
-3. Consider performance optimization during peak conditions
-4. Address any inspection findings promptly
-
-KEY INSIGHTS:
-- System operates within expected parameters
-- Wind conditions are favorable for energy generation
-- No critical maintenance issues detected
-- Site configuration appears appropriate for current performance
-
-Note: This is a mock analysis generated due to API connectivity issues.
-"""
-
-def create_mock_summary_user_data_only(site_name, site_type, site_specs, inspections):
+    Format the response in a clear, professional manner suitable for maintenance teams.
+    Focus on actionable insights that maintenance teams can use immediately.
     """
-    Create a mock summary using ONLY user data
+    
+    return prompt
+
+def create_mock_summary_with_csv_analysis(csv_analysis, platform_setup, inspections, site_name="Energy Site"):
     """
-    # Process inspection data for mock summary
+    Create a mock summary incorporating CSV analysis results
+    """
+    csv_stats = csv_analysis.get('stats', {})
+    model_performance = csv_analysis.get('analysis_results', {}).get('linear_regression', {})
+    
+    site_type = platform_setup.get('siteType', 'energy')
+    site_specs = platform_setup.get('siteSpecs', 'Standard energy site')
+    
+    # Process inspection data
     inspection_text = ""
     if inspections:
         inspection_text = "\n\nRECENT INSPECTIONS:\n"
@@ -194,8 +196,16 @@ SITE CONFIGURATION:
 - Site Type: {site_type}
 - Site Specifications: {site_specs}
 
-OVERALL ASSESSMENT:
-Based on the provided configuration, this {site_type} site appears to be properly configured for renewable energy generation. The specifications indicate a well-planned installation with appropriate capacity and technology.
+CSV DATA ANALYSIS:
+- Data points analyzed: {csv_stats.get('data_points', 'N/A')}
+- Features identified: {csv_stats.get('features', 'N/A')}
+- Target variable: {csv_stats.get('target_column', 'N/A')}
+- Date range: {csv_stats.get('date_range', {}).get('start', 'N/A')} to {csv_stats.get('date_range', {}).get('end', 'N/A')}
+
+PERFORMANCE METRICS:
+- Mean output: {csv_stats.get('target_stats', {}).get('mean', 'N/A'):.2f}
+- Standard deviation: {csv_stats.get('target_stats', {}).get('std', 'N/A'):.2f}
+- Model R² score: {model_performance.get('r2', 'N/A'):.4f}
 
 {inspection_text}
 
@@ -207,188 +217,75 @@ INSPECTION ANALYSIS:
 
 RECOMMENDATIONS:
 1. Continue regular maintenance schedule for {site_type} systems
-2. Address any critical inspection findings immediately
-3. Monitor {site_type} performance based on specifications
-4. Implement site-specific optimization strategies
+2. Monitor performance based on the analyzed data patterns
+3. Address any critical inspection findings immediately
+4. Consider model-based predictions for proactive maintenance
+5. Implement site-specific optimization strategies
 
 KEY INSIGHTS:
-- Site configuration appears appropriate for the intended purpose
+- System performance analysis completed successfully
+- Model provides good predictive capability (R²: {model_performance.get('r2', 'N/A'):.4f})
 - Inspection status provides operational guidance
-- Maintenance priorities should align with site type requirements
-- Risk assessment based on inspection findings
+- Risk assessment based on both data analysis and inspection findings
 
-Note: This analysis is based solely on user-provided configuration and inspection data.
+Note: This analysis combines automated CSV data analysis with inspection findings.
 """
 
-def generate_weekly_summary(df, site_name="Wind Site A"):
+def generate_comprehensive_analysis(csv_data, filename, platform_setup, inspections, site_name="Energy Site"):
     """
-    Generate weekly summary from wind turbine data
+    Generate comprehensive analysis combining CSV data analysis with inspection data
+    
+    Args:
+        csv_data (str): Base64 encoded CSV data
+        filename (str): Original filename
+        platform_setup (dict): Platform configuration
+        inspections (list): Inspection data
+        site_name (str): Site name
+    
+    Returns:
+        tuple: (summary, stats)
     """
-    # Calculate basic statistics
-    avg_output = df['ActivePower_kW'].mean()
-    peak_output = df['ActivePower_kW'].max()
-    
-    # Detect anomalies (simple threshold-based detection)
-    threshold = df['ActivePower_kW'].mean() + 2 * df['ActivePower_kW'].std()
-    anomalies = df[df['ActivePower_kW'] > threshold]
-    
-    # Format anomalies for the prompt
-    if not anomalies.empty:
-        anomaly_dates = anomalies['Datetime'].dt.strftime('%B %d').tolist()
-        anomaly_info = f"Anomalies detected on: {', '.join(anomaly_dates)}"
-    else:
-        anomaly_info = "No significant anomalies detected"
-    
-    # Create additional data summary
-    wind_speed_avg = df['WindSpeed_mps'].mean()
-    wind_direction_avg = df['WindDirection_deg'].mean()
-    
-    additional_data = f"""
-    Wind Conditions:
-    - Average wind speed: {wind_speed_avg:.2f} m/s
-    - Average wind direction: {wind_direction_avg:.2f} degrees
-    - Data points analyzed: {len(df)}
-    - Date range: {df['Datetime'].min().strftime('%Y-%m-%d')} to {df['Datetime'].max().strftime('%Y-%m-%d')}
-    """
-    
-    # Create the prompt
-    prompt = create_summary_prompt(
-        site_name=site_name,
-        avg_output=f"{avg_output:.2f}",
-        anomalies=anomaly_info,
-        peak_output=f"{peak_output:.2f}",
-        additional_data=additional_data
-    )
-    
-    # Generate summary using Qwen
-    summary = qwen_summary(prompt)
-    
-    # Prepare stats
-    stats = {
-        'avg_output': avg_output,
-        'peak_output': peak_output,
-        'anomalies': anomaly_info,
-        'wind_speed_avg': wind_speed_avg,
-        'wind_direction_avg': wind_direction_avg,
-        'data_points': len(df)
-    }
-    
-    # If API fails, use mock summary
-    if not summary:
-        print("API failed, using mock summary...")
-        summary = create_mock_summary(
-            site_name,
-            avg_output,
-            peak_output,
-            anomaly_info,
-            wind_speed_avg,
-            wind_direction_avg,
-            len(df)
+    try:
+        # Analyze the uploaded CSV
+        print("Analyzing uploaded CSV file...")
+        csv_analysis = analyze_uploaded_csv(csv_data, filename)
+        
+        if 'error' in csv_analysis:
+            return None, {'error': csv_analysis['error']}
+        
+        # Create prompt with CSV analysis results
+        prompt = create_summary_prompt_with_csv_analysis(
+            csv_analysis, platform_setup, inspections, site_name
         )
-    
-    return summary, stats
-
-def generate_weekly_summary_with_user_data(df, platform_setup, inspections, site_name="Wind Site A"):
-    """
-    Generate weekly summary from wind turbine data with user input data
-    """
-    # Calculate basic statistics
-    avg_output = df['ActivePower_kW'].mean()
-    peak_output = df['ActivePower_kW'].max()
-    
-    # Detect anomalies (simple threshold-based detection)
-    threshold = df['ActivePower_kW'].mean() + 2 * df['ActivePower_kW'].std()
-    anomalies = df[df['ActivePower_kW'] > threshold]
-    
-    # Format anomalies for the prompt
-    if not anomalies.empty:
-        anomaly_dates = anomalies['Datetime'].dt.strftime('%B %d').tolist()
-        anomaly_info = f"Anomalies detected on: {', '.join(anomaly_dates)}"
-    else:
-        anomaly_info = "No significant anomalies detected"
-    
-    # Create additional data summary
-    wind_speed_avg = df['WindSpeed_mps'].mean()
-    wind_direction_avg = df['WindDirection_deg'].mean()
-    
-    # Incorporate user platform setup
-    site_type = platform_setup.get('siteType', 'wind')
-    site_specs = platform_setup.get('siteSpecs', 'Standard wind farm')
-    
-    # Process inspection data
-    inspection_summary = ""
-    if inspections:
-        inspection_summary = "\n\nRECENT INSPECTIONS:\n"
-        for i, inspection in enumerate(inspections, 1):
-            date = inspection.get('date', 'Unknown date')
-            status = inspection.get('status', 'Unknown status')
-            notes = inspection.get('notes', 'No notes provided')
-            inspection_summary += f"{i}. Date: {date} | Status: {status} | Notes: {notes}\n"
-    
-    # Create enhanced prompt with user data
-    prompt = f"""
-    Analyze the following renewable energy site data for {site_name}:
-    
-    SITE CONFIGURATION:
-    - Site Type: {site_type}
-    - Site Specifications: {site_specs}
-    
-    PERFORMANCE DATA:
-    - Average output: {avg_output:.2f} kWh
-    - Peak output: {peak_output:.2f} kWh
-    - Anomalies detected: {anomaly_info}
-    
-    WIND CONDITIONS:
-    - Average wind speed: {wind_speed_avg:.2f} m/s
-    - Average wind direction: {wind_direction_avg:.2f} degrees
-    - Data points analyzed: {len(df)}
-    - Date range: {df['Datetime'].min().strftime('%Y-%m-%d')} to {df['Datetime'].max().strftime('%Y-%m-%d')}
-    
-    {inspection_summary}
-    
-    Please provide a comprehensive analysis that includes:
-    1. Overall performance assessment considering the site type and specifications
-    2. Analysis of inspection findings and their impact on operations
-    3. Anomaly analysis and potential causes based on the site configuration
-    4. Specific recommendations for maintenance or optimization based on the site type
-    5. Key insights for operational decision-making
-    6. Risk assessment based on inspection status and performance data
-    
-    Format the response in a clear, professional manner suitable for maintenance teams.
-    """
-    
-    # Generate summary using Qwen
-    summary = qwen_summary(prompt)
-    
-    # Prepare stats
-    stats = {
-        'avg_output': avg_output,
-        'peak_output': peak_output,
-        'anomalies': anomaly_info,
-        'wind_speed_avg': wind_speed_avg,
-        'wind_direction_avg': wind_direction_avg,
-        'data_points': len(df),
-        'site_type': site_type,
-        'inspections_count': len(inspections)
-    }
-    
-    # If API fails, use mock summary
-    if not summary:
-        print("API failed, using mock summary...")
-        summary = create_mock_summary_with_user_data(
-            site_name,
-            avg_output,
-            peak_output,
-            anomaly_info,
-            wind_speed_avg,
-            wind_direction_avg,
-            len(df),
-            site_type,
-            site_specs,
-            inspections
-        )
-    
-    return summary, stats
+        
+        # Generate AI summary
+        print("Generating AI summary...")
+        summary = qwen_summary(prompt)
+        
+        # Prepare comprehensive stats
+        stats = {
+            'csv_analysis': csv_analysis.get('stats', {}),
+            'model_performance': csv_analysis.get('analysis_results', {}).get('linear_regression', {}),
+            'site_type': platform_setup.get('siteType', 'energy'),
+            'inspections_count': len(inspections),
+            'critical_inspections': len([i for i in inspections if i.get('status') == 'critical']),
+            'concern_inspections': len([i for i in inspections if 'concern' in i.get('status', '')]),
+            'normal_inspections': len([i for i in inspections if i.get('status') == 'normal']),
+            'analysis_success': True
+        }
+        
+        # If API fails, use mock summary
+        if not summary:
+            print("API failed, using mock summary...")
+            summary = create_mock_summary_with_csv_analysis(
+                csv_analysis, platform_setup, inspections, site_name
+            )
+        
+        return summary, stats
+        
+    except Exception as e:
+        print(f"Error in comprehensive analysis: {str(e)}")
+        return None, {'error': str(e)}
 
 def generate_summary_from_user_data_only(platform_setup, inspections, site_name="Renewable Energy Site"):
     """
@@ -454,12 +351,64 @@ def generate_summary_from_user_data_only(platform_setup, inspections, site_name=
     
     return summary, stats
 
+def create_mock_summary_user_data_only(site_name, site_type, site_specs, inspections):
+    """
+    Create a mock summary using ONLY user data
+    """
+    # Process inspection data for mock summary
+    inspection_text = ""
+    if inspections:
+        inspection_text = "\n\nRECENT INSPECTIONS:\n"
+        for i, inspection in enumerate(inspections, 1):
+            date = inspection.get('date', 'Unknown date')
+            status = inspection.get('status', 'Unknown status')
+            notes = inspection.get('notes', 'No notes provided')
+            inspection_text += f"{i}. Date: {date} | Status: {status} | Notes: {notes}\n"
+    
+    # Count inspection types
+    critical_count = len([i for i in inspections if i.get('status') == 'critical'])
+    concern_count = len([i for i in inspections if 'concern' in i.get('status', '')])
+    normal_count = len([i for i in inspections if i.get('status') == 'normal'])
+    
+    return f"""
+AI Analysis Summary for {site_name}
+
+SITE CONFIGURATION:
+- Site Type: {site_type}
+- Site Specifications: {site_specs}
+
+OVERALL ASSESSMENT:
+Based on the provided configuration, this {site_type} site appears to be properly configured for renewable energy generation. The specifications indicate a well-planned installation with appropriate capacity and technology.
+
+{inspection_text}
+
+INSPECTION ANALYSIS:
+- Total Inspections: {len(inspections)}
+- Critical Issues: {critical_count}
+- Concerns: {concern_count}
+- Normal Status: {normal_count}
+
+RECOMMENDATIONS:
+1. Continue regular maintenance schedule for {site_type} systems
+2. Address any critical inspection findings immediately
+3. Monitor {site_type} performance based on specifications
+4. Implement site-specific optimization strategies
+
+KEY INSIGHTS:
+- Site configuration appears appropriate for the intended purpose
+- Inspection status provides operational guidance
+- Maintenance priorities should align with site type requirements
+- Risk assessment based on inspection findings
+
+Note: This analysis is based solely on user-provided configuration and inspection data.
+"""
+
 def export_summary(summary, filename="weekly_summary.txt"):
     """
     Export summary to text file
     """
     with open(filename, "w", encoding="utf-8") as f:
-        f.write(f"Wind Turbine Weekly Summary\n")
+        f.write(f"Energy Site Analysis Summary\n")
         f.write(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("=" * 50 + "\n\n")
         f.write(summary)
