@@ -53,12 +53,14 @@
                 <label for="site-specs">Upload CSV File with Site Specifications</label>
                 <input type="file" id="site-specs" name="site-specs" accept=".csv" required>
                 <small>Please upload a CSV file containing site specifications (e.g., panel count, inverter type, capacity, etc.)</small>
-                <button type="submit">Save Platform Setup</button>
+                
+                <div class="button-row">
+                    <button type="submit">SAVE PLATFORM SETUP</button>
+                    <span id="saveMessage-setup" class="inline-popup">✓ Saved successfully</span>
+                </div>
             </form>
         </section>
-	<div id="platform-popup" class="popup" style="display:none;">
-	    <h3>SAVED</h3>
-	</div>
+	
         <section id="inspection" class="tab-content">
             <h2>Insert Inspection Data</h2>
             <form id="inspection-form">
@@ -73,12 +75,16 @@
                     <option value="concern-multiple">Signs of Concern (Multiple)</option>
                     <option value="critical">Critical (Immediate Action)</option>
                 </select>
-                <button type="submit">Submit Inspection</button>
+                
+                <div class="button-row">
+                    <button type="submit">SAVE INSPECTION</button>
+                    <span id="saveMessage-inspection" class="inline-popup">✓ Inspection saved</span>
+                </div>
+                
+                
             </form>
         </section>
-        <div id="inspection-popup" class="popup" style="display:none;">
-            <h3>SAVED</h3>
-        </div>
+        
         <section id="ai" class="tab-content">
             <h2>AI Analysis</h2>
             <div id="ai-analysis-content">
