@@ -427,6 +427,53 @@ def attach_summary_to_csv(df, summary, output_filename="final_output_with_summar
     df_copy.to_csv(output_filename, index=False)
     print(f"Data with summary exported to {output_filename}")
 
+def generate_weekly_summary(df, site_name="Energy Site"):
+    """
+    Generate weekly summary using the dataframe and site name
+    This function is called by the main() function and app.py
+    """
+    try:
+        # Create a basic platform setup for the dataframe analysis
+        platform_setup = {
+            'siteType': 'energy',
+            'siteSpecs': f'Data analysis for {site_name}'
+        }
+        
+        # Create mock inspections based on data
+        inspections = []
+        if len(df) > 0:
+            # Create a mock inspection based on the data
+            latest_date = df['Datetime'].max() if 'Datetime' in df.columns else datetime.now()
+            inspections.append({
+                'date': latest_date.strftime('%Y-%m-%d') if hasattr(latest_date, 'strftime') else str(latest_date),
+                'status': 'normal',
+                'notes': f'Data analysis completed for {site_name} with {len(df)} data points'
+            })
+        
+        # Generate summary using user data only
+        summary, stats = generate_summary_from_user_data_only(platform_setup, inspections, site_name)
+        
+        return summary, stats
+        
+    except Exception as e:
+        print(f"Error in generate_weekly_summary: {str(e)}")
+        return None, {'error': str(e)}
+
+def generate_weekly_summary_with_user_data(platform_setup, inspections, site_name="Energy Site"):
+    """
+    Generate weekly summary with user-provided platform setup and inspections
+    This function is called by app.py
+    """
+    try:
+        # Generate summary using user data only
+        summary, stats = generate_summary_from_user_data_only(platform_setup, inspections, site_name)
+        
+        return summary, stats
+        
+    except Exception as e:
+        print(f"Error in generate_weekly_summary_with_user_data: {str(e)}")
+        return None, {'error': str(e)}
+
 def main():
     """
     Main function to run the AI summary generation

@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 from dotenv import load_dotenv
-from ai_summary_generator import generate_comprehensive_analysis, generate_summary_from_user_data_only, qwen_summary
+from ai_summary_generator import generate_comprehensive_analysis, generate_summary_from_user_data_only, qwen_summary, generate_weekly_summary, generate_weekly_summary_with_user_data
 
 # Load environment variables from .env file
 load_dotenv()
