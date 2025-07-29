@@ -302,3 +302,25 @@ button:active {
     font-weight: 900;
     font-family: 'Arial Black',sans-serif;
 }
+.button-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.inline-popup {
+    display: none;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: inherit; /* uses same font as body */
+    color: #28a745; /* green text */
+    background: rgba(40, 167, 69, 0.1); /* subtle green background */
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.inline-popup.show {
+    display: inline-block;
+}

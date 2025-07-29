@@ -38,11 +38,13 @@ if (setupForm) {
             siteType: setupForm['site-type'].value,
             siteSpecs: setupForm['site-specs'].value
         };
-        const platform_popup = document.getElementById('platform-popup');
-        platform_popup.style.display='flex';
-        setTimeout(() => {
-            platform_popup.style.display='none';
-        }, 3000);
+        const saveMsgSetup = document.getElementById('saveMessage-setup');
+saveMsgSetup.classList.add('show');
+setTimeout(() => {
+    saveMsgSetup.classList.remove('show');
+}, 2000);
+
+
         addAlert('Platform Setup Saved', `Site type: ${platformSetup.siteType || 'N/A'}<br>Specs: ${platformSetup.siteSpecs || 'N/A'}`);
     });
 }
@@ -58,11 +60,12 @@ if (inspectionForm) {
             status: inspectionForm['inspection-status'].value
         };
         inspections.push(inspection);
-        const inspection_popup = document.getElementById('inspection-popup');
-        inspection_popup.style.display='flex';
-        setTimeout(() => {
-            inspection_popup.style.display='none';
-        }, 3000);
+        const saveMsgInspection = document.getElementById('saveMessage-inspection');
+saveMsgInspection.classList.add('show');
+setTimeout(() => {
+    saveMsgInspection.classList.remove('show');
+}, 2000);
+
         addAlert('Inspection Submitted', `Date: ${inspection.date}<br>Status: ${inspection.status}<br>Notes: ${inspection.notes}`);
     });
 }
