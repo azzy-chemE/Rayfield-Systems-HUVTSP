@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 from dotenv import load_dotenv
 from ai_summary_generator import generate_comprehensive_analysis, generate_summary_from_user_data_only, qwen_summary, generate_weekly_summary, generate_weekly_summary_with_user_data
+import werkzeug
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,6 +22,10 @@ if not os.getenv("OPENROUTER_API_KEY"):
 
 # Detect if running on Render (production environment)
 IS_RENDER = os.environ.get('RENDER', False) or os.environ.get('PORT', False)
+
+# Global variable to store uploaded CSV data
+uploaded_csv_data = None
+uploaded_csv_filename = None
 
 # Serve static files from root directory
 @app.route('/')
@@ -48,6 +53,50 @@ def serve_charts(filename):
         return send_from_directory('static/charts', filename)
     except Exception as e:
         return jsonify({'error': f'Failed to serve chart {filename}: {str(e)}'}), 500
+
+# File upload endpoint
+@app.route('/api/upload-csv', methods=['POST'])
+def upload_csv():
+    global uploaded_csv_data, uploaded_csv_filename
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not file.filename.lower().endswith('.csv'):
+            return jsonify({'error': 'Please upload a CSV file'}), 400
+        
+        # Read and validate the CSV file
+        try:
+            df = pd.read_csv(file)
+            print(f"Uploaded CSV: {file.filename}, Shape: {df.shape}")
+            
+            # Save the uploaded file
+            uploaded_csv_filename = file.filename
+            uploaded_csv_data = df
+            
+            # Save to a temporary file for analysis
+            temp_filename = 'uploaded_data.csv'
+            df.to_csv(temp_filename, index=False)
+            
+            return jsonify({
+                'success': True,
+                'message': f'CSV file uploaded successfully: {file.filename}',
+                'filename': file.filename,
+                'rows': len(df),
+                'columns': list(df.columns)
+            })
+            
+        except Exception as e:
+            return jsonify({'error': f'Invalid CSV file: {str(e)}'}), 400
+            
+    except Exception as e:
+        print(f"Error in upload_csv: {str(e)}")
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
 
 # API endpoint for AI analysis
 @app.route('/api/run-ai-analysis', methods=['POST'])
@@ -115,11 +164,18 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
     Run the AI summary generator and return results with charts
     """
     try:
-        # Check if cleaned_data.csv exists
-        if not os.path.exists('cleaned_data.csv'):
+        # Check if we have uploaded CSV data
+        csv_file_path = None
+        if uploaded_csv_data is not None and uploaded_csv_filename:
+            csv_file_path = 'uploaded_data.csv'
+            print(f"Using uploaded CSV file: {uploaded_csv_filename}")
+        elif os.path.exists('cleaned_data.csv'):
+            csv_file_path = 'cleaned_data.csv'
+            print("Using fallback cleaned_data.csv")
+        else:
             return {
                 'success': False,
-                'error': 'cleaned_data.csv not found'
+                'error': 'No CSV data available. Please upload a CSV file first.'
             }
         
         # Create static/charts directory if it doesn't exist
@@ -130,14 +186,15 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
         
         # Perform data analysis
         print("Starting data analysis...")
-        analysis_results = energy_analysis.analyze_energy_csv('cleaned_data.csv', output_dir='static/charts', lightweight_mode=lightweight_mode)
+        analysis_results = energy_analysis.analyze_energy_csv(csv_file_path, output_dir='static/charts', lightweight_mode=lightweight_mode)
         
         # Get basic stats
         stats = {
             'data_points': analysis_results.get('stats', {}).get('data_points', 0),
             'features': analysis_results.get('stats', {}).get('features', 0),
             'target_variable': analysis_results.get('stats', {}).get('target_variable', 'Unknown'),
-            'date_range': analysis_results.get('stats', {}).get('date_range', 'Unknown')
+            'date_range': analysis_results.get('stats', {}).get('date_range', 'Unknown'),
+            'uploaded_filename': uploaded_csv_filename if uploaded_csv_filename else 'cleaned_data.csv'
         }
         
         # Generate AI summary

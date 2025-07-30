@@ -32,20 +32,65 @@ function addAlert(title, description) {
 // Setup Platform form
 const setupForm = document.getElementById('setup-form');
 if (setupForm) {
-    setupForm.addEventListener('submit', function(e) {
+    setupForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        platformSetup = {
-            siteType: setupForm['site-type'].value,
-            siteSpecs: setupForm['site-specs'].value
-        };
-        const saveMsgSetup = document.getElementById('saveMessage-setup');
-saveMsgSetup.classList.add('show');
-setTimeout(() => {
-    saveMsgSetup.classList.remove('show');
-}, 2000);
-
-
-        addAlert('Platform Setup Saved', `Site type: ${platformSetup.siteType || 'N/A'}<br>Specs: ${platformSetup.siteSpecs || 'N/A'}`);
+        
+        const fileInput = setupForm['site-specs'];
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Please select a CSV file');
+            return;
+        }
+        
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            alert('Please select a CSV file');
+            return;
+        }
+        
+        // Show loading state
+        const submitButton = setupForm.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'Uploading...';
+        submitButton.disabled = true;
+        
+        try {
+            // Upload the CSV file
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const uploadResponse = await fetch('/api/upload-csv', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const uploadResult = await uploadResponse.json();
+            
+            if (uploadResult.success) {
+                platformSetup = {
+                    siteType: setupForm['site-type'].value,
+                    siteSpecs: file.name,
+                    csvData: uploadResult
+                };
+                
+                const saveMsgSetup = document.getElementById('saveMessage-setup');
+                saveMsgSetup.classList.add('show');
+                setTimeout(() => {
+                    saveMsgSetup.classList.remove('show');
+                }, 2000);
+                
+                addAlert('Platform Setup Saved', `Site type: ${platformSetup.siteType || 'N/A'}<br>CSV file: ${file.name}<br>Rows: ${uploadResult.rows}<br>Columns: ${uploadResult.columns.length}`);
+            } else {
+                alert(`Upload failed: ${uploadResult.error}`);
+            }
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Failed to upload file. Please try again.');
+        } finally {
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
+        }
     });
 }
 
@@ -172,8 +217,25 @@ if (runAIButton) {
                         <p><strong>Site Type:</strong> ${platformSetup.siteType || 'Not specified'}</p>
                         <p><strong>Site Specs:</strong> ${platformSetup.siteSpecs || 'Not specified'}</p>
                         <p><strong>Inspections:</strong> ${inspections.length} inspection(s) recorded</p>
+                        <p><strong>CSV Data:</strong> ${platformSetup.csvData ? `${platformSetup.csvData.rows} rows, ${platformSetup.csvData.columns.length} columns` : 'No CSV data uploaded'}</p>
                     </div>
                 `;
+                
+                // Add CSV data analysis section
+                if (result.csv_stats && Object.keys(result.csv_stats).length > 0) {
+                    resultHtml += `
+                        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                            <h4 style="margin-top: 0; color: #1a1a1a;">CSV Data Analysis</h4>
+                            <ul style="margin: 0; padding-left: 1.5rem;">
+                                <li><strong>Data Points:</strong> ${result.csv_stats.data_points || 'N/A'}</li>
+                                <li><strong>Features:</strong> ${result.csv_stats.features || 'N/A'}</li>
+                                <li><strong>Target Variable:</strong> ${result.csv_stats.target_variable || 'N/A'}</li>
+                                <li><strong>Date Range:</strong> ${result.csv_stats.date_range || 'N/A'}</li>
+                                <li><strong>File:</strong> ${result.stats.uploaded_filename || 'N/A'}</li>
+                            </ul>
+                        </div>
+                    `;
+                }
                 
                 // Add charts section if charts are available
                 if (result.charts && result.charts.length > 0) {
@@ -195,6 +257,13 @@ if (runAIButton) {
                     
                     resultHtml += `
                             </div>
+                        </div>
+                    `;
+                } else if (result.lightweight_mode) {
+                    resultHtml += `
+                        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                            <h4 style="margin-top: 0; color: #856404;">Lightweight Mode</h4>
+                            <p>Charts were not generated to save memory and processing time. The analysis was performed on your uploaded data.</p>
                         </div>
                     `;
                 }
