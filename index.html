@@ -89,6 +89,17 @@
             <h2>AI Analysis</h2>
             <div id="ai-analysis-content">
                 <p>AI will analyze all data, keeping specs of the plant in mind, and determine the current status.</p>
+                
+                <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="lightweight-toggle" style="margin: 0;">
+                        <span>Enable lightweight mode (faster, no charts)</span>
+                    </label>
+                    <small style="color: #666; display: block; margin-top: 0.5rem;">
+                        Uncheck this to generate full charts and analysis (may be slower on Render)
+                    </small>
+                </div>
+                
                 <button id="run-ai-analysis">Run AI Analysis</button>
                 <div id="ai-result" style="margin-top:1.5rem;"></div>
             </div>

@@ -114,7 +114,7 @@ def run_ai_analysis():
         
         platform_setup = data.get('platformSetup')
         inspections = data.get('inspections', [])
-        lightweight_mode = data.get('lightweight', IS_RENDER)  # Default to lightweight on Render
+        lightweight_mode = data.get('lightweight', False)  # Default to heavyweight mode (full charts)
         
         if not platform_setup:
             return jsonify({'error': 'Platform setup required'}), 400
@@ -122,10 +122,11 @@ def run_ai_analysis():
         if not inspections:
             return jsonify({'error': 'Inspection data required'}), 400
         
-        # Force lightweight mode on Render to prevent timeouts
-        if IS_RENDER and not lightweight_mode:
-            print("Forcing lightweight mode on Render to prevent timeouts")
-            lightweight_mode = True
+        # Optional: Force lightweight mode on Render to prevent timeouts
+        # Uncomment the lines below if you want to force lightweight mode on Render
+        # if IS_RENDER and not lightweight_mode:
+        #     print("Forcing lightweight mode on Render to prevent timeouts")
+        #     lightweight_mode = True
         
         # Run the AI summary generator with user data
         result = run_ai_summary_generator(platform_setup, inspections, lightweight_mode)

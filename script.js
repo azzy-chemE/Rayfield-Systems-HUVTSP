@@ -148,7 +148,7 @@ if (runAIButton) {
                 body: JSON.stringify({
                     platformSetup: platformSetup,
                     inspections: inspections,
-                    lightweight: false  // Set to true for memory-constrained environments
+                    lightweight: document.getElementById('lightweight-toggle').checked  // Use UI toggle
                 })
             });
             
