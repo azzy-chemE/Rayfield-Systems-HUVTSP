@@ -10,6 +10,7 @@ import pickle
 import os
 from datetime import datetime
 import warnings
+import gc
 warnings.filterwarnings('ignore')
 
 class EnergyDataAnalyzer:
@@ -158,55 +159,43 @@ class EnergyDataAnalyzer:
             print(f"Error training model: {str(e)}")
             return False
     
-    def generate_plots(self, output_dir='plots'):
+    def generate_plots(self, output_dir='plots', lightweight_mode=False):
         """
-        Generate various plots for the energy data analysis
+        Generate all analysis plots
         
         Args:
             output_dir (str): Directory to save plots
+            lightweight_mode (bool): If True, skip chart generation to save memory
         """
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        
-        # Set style with memory optimization
-        plt.style.use('default')
-        sns.set_palette("husl")
-        
-        # Reduce memory usage by using smaller figure sizes and lower DPI
-        plt.rcParams['figure.dpi'] = 100  # Lower DPI for smaller files
-        plt.rcParams['figure.figsize'] = (8, 6)  # Smaller default figure size
+        if lightweight_mode:
+            print("Lightweight mode enabled - skipping chart generation")
+            return
         
         try:
-            # 1. Time series plot
-            if self.datetime_column:
-                self._plot_time_series(output_dir)
+            # Create output directory
+            os.makedirs(output_dir, exist_ok=True)
             
-            # 2. Linear regression results
-            if 'linear_regression' in self.analysis_results:
-                self._plot_regression_results(output_dir)
+            # Set memory-efficient plot parameters
+            plt.rcParams['figure.dpi'] = 100
+            plt.rcParams['figure.figsize'] = (8, 6)
             
-            # 3. Feature importance
-            if 'linear_regression' in self.analysis_results:
-                self._plot_feature_importance(output_dir)
+            print("Generating plots...")
             
-            # 4. Rolling averages
-            if self.target_column:
-                self._plot_rolling_averages(output_dir)
-            
-            # 5. Correlation heatmap
+            # Generate each plot type
+            self._plot_time_series(output_dir)
+            self._plot_regression_results(output_dir)
+            self._plot_feature_importance(output_dir)
+            self._plot_rolling_averages(output_dir)
             self._plot_correlation_heatmap(output_dir)
-            
-            # 6. Distribution plots
             self._plot_distributions(output_dir)
             
-            print(f"All plots saved to {output_dir}/")
+            print(f"All plots saved to {output_dir}")
             
         except Exception as e:
             print(f"Error generating plots: {str(e)}")
         finally:
             # Clean up matplotlib memory
             plt.close('all')
-            import gc
             gc.collect()
     
     def _plot_time_series(self, output_dir):
@@ -408,50 +397,60 @@ class EnergyDataAnalyzer:
         
         return stats
 
-def analyze_energy_csv(csv_file_path, output_dir='analysis_output'):
+def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_mode=False):
     """
-    Main function to analyze any energy maintenance CSV file
+    Analyze energy CSV data and generate insights
     
     Args:
         csv_file_path (str): Path to the CSV file
         output_dir (str): Directory to save outputs
+        lightweight_mode (bool): If True, skip chart generation to save memory
     
     Returns:
         dict: Analysis results and statistics
     """
-    # Create output directory
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    # Initialize analyzer
-    analyzer = EnergyDataAnalyzer(csv_file_path)
-    
-    # Load and prepare data
-    if not analyzer.load_and_prepare_data():
-        return {'error': 'Failed to load data'}
-    
-    # Create rolling averages
-    analyzer.create_rolling_averages()
-    
-    # Train linear regression model
-    if not analyzer.train_linear_regression():
-        return {'error': 'Failed to train model'}
-    
-    # Generate plots
-    analyzer.generate_plots(output_dir)
-    
-    # Save model
-    analyzer.save_model(os.path.join(output_dir, 'energy_model.pkl'))
-    
-    # Generate summary statistics
-    stats = analyzer.generate_summary_stats()
-    
-    return {
-        'success': True,
-        'stats': stats,
-        'analysis_results': analyzer.analysis_results,
-        'output_dir': output_dir
-    }
+    try:
+        # Initialize analyzer
+        analyzer = EnergyDataAnalyzer(csv_file_path)
+        
+        # Load and prepare data
+        if not analyzer.load_and_prepare_data():
+            return {'error': 'Failed to load data'}
+        
+        # Create rolling averages
+        analyzer.create_rolling_averages()
+        
+        # Train linear regression model
+        model_results = analyzer.train_linear_regression()
+        
+        # Generate summary statistics
+        stats = analyzer.generate_summary_stats()
+        
+        # Generate plots (only if not in lightweight mode)
+        if not lightweight_mode:
+            analyzer.generate_plots(output_dir, lightweight_mode)
+        
+        # Prepare analysis results
+        analysis_results = {
+            'linear_regression': model_results,
+            'feature_importance': analyzer.analysis_results.get('feature_importance', {}),
+            'summary_stats': stats
+        }
+        
+        # Clean up memory
+        del analyzer
+        gc.collect()
+        
+        return {
+            'analysis_results': analysis_results,
+            'stats': stats,
+            'output_dir': output_dir if not lightweight_mode else None,
+            'lightweight_mode': lightweight_mode
+        }
+        
+    except Exception as e:
+        print(f"Error in analyze_energy_csv: {str(e)}")
+        return {'error': str(e)}
 
 if __name__ == "__main__":
     # Example usage
