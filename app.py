@@ -6,7 +6,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 from dotenv import load_dotenv
-from ai_summary_generator import generate_comprehensive_analysis, generate_summary_from_user_data_only, qwen_summary, generate_weekly_summary, generate_weekly_summary_with_user_data
+from ai_summary_generator import generate_comprehensive_analysis, generate_summary_from_user_data_only, qwen_summary, generate_weekly_summary, generate_weekly_summary_with_user_data, create_mock_summary_with_csv_analysis
 import werkzeug
 
 # Load environment variables from .env file
@@ -21,7 +21,7 @@ if not os.getenv("OPENROUTER_API_KEY"):
     print("For local development, create a .env file or set the environment variable.")
 
 # Detect if running on Render (production environment)
-IS_RENDER = os.environ.get('RENDER', False) or os.environ.get('PORT', False)
+IS_RENDER = os.environ.get('RENDER', False) or os.environ.get('PORT', False) or os.environ.get('RENDER_EXTERNAL_URL', False)
 
 # Global variable to store uploaded CSV data
 uploaded_csv_data = None
@@ -178,8 +178,12 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
                 'error': 'No CSV data available. Please upload a CSV file first.'
             }
         
-        # Create static/charts directory if it doesn't exist
-        os.makedirs('static/charts', exist_ok=True)
+        # Create static/charts directory if it doesn't exist (with error handling for Render)
+        try:
+            os.makedirs('static/charts', exist_ok=True)
+        except Exception as e:
+            print(f"Warning: Could not create charts directory: {e}")
+            # Continue without charts directory
         
         # Import energy_analysis here to avoid memory issues
         import energy_analysis
@@ -239,10 +243,14 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
         chart_files = []
         if not lightweight_mode and 'output_dir' in analysis_results:
             charts_dir = analysis_results['output_dir']
-            if os.path.exists(charts_dir):
-                for file in os.listdir(charts_dir):
-                    if file.endswith('.png'):
-                        chart_files.append(f'/static/charts/{file}')
+            try:
+                if os.path.exists(charts_dir):
+                    for file in os.listdir(charts_dir):
+                        if file.endswith('.png'):
+                            chart_files.append(f'/static/charts/{file}')
+            except Exception as e:
+                print(f"Warning: Could not access charts directory: {e}")
+                # Continue without charts
         
         # Clean up memory
         gc.collect()
@@ -308,15 +316,26 @@ def test_endpoint():
 @app.route('/api/status', methods=['GET'])
 def get_status():
     try:
-        # Check if data files exist
-        data_exists = os.path.exists('cleaned_data.csv')
-        model_exists = os.path.exists('model.pkl')
+        # Check if data files exist (with error handling for Render)
+        data_exists = False
+        model_exists = False
+        try:
+            data_exists = os.path.exists('cleaned_data.csv')
+        except:
+            pass
+        
+        try:
+            model_exists = os.path.exists('model.pkl')
+        except:
+            pass
+            
         api_key_set = bool(os.getenv("OPENROUTER_API_KEY"))
         
         return jsonify({
             'data_available': data_exists,
             'model_available': model_exists,
             'api_key_set': api_key_set,
+            'is_render': IS_RENDER,
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
