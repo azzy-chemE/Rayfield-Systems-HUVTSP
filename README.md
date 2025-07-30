@@ -148,9 +148,10 @@ The application includes memory optimization features:
 
 ## Known Issues
 
-- Chart generation may be slow with very large datasets
+- Chart generation may be slow with very large datasets, must be local deploy
 - Memory usage can be high during analysis (mitigated by lightweight mode)
 - Some browsers may have issues with large chart images
+- Render deployment is locked in lightweight mode for now
 
 ## Contributing
 
