@@ -3,7 +3,7 @@ A comprehensive maintenance automation platform for renewable energy plants with
 
 ## Features
 - **Platform Setup**: Configure different types of renewable energy sites (solar, wind, hydro, thermal)
-- ** Inspection Data**: Log maintenance inspections with status tracking(upload .csv or .pdf)
+- **Inspection Data**: Log maintenance inspections with status tracking(upload .csv or .pdf)
 - **AI Analysis**: Real-time AI-powered analysis using Qwen model via OpenRouter
 - **Dynamic Analysis**: AI responses change based on user inputs and site configuration
 - **Professional UI**: Modern web interface with real-time updates
