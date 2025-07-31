@@ -168,11 +168,12 @@ def create_mock_summary_with_csv_analysis(csv_analysis, platform_setup, inspecti
     """
     Create a mock summary incorporating CSV analysis results
     """
-    csv_stats = csv_analysis.get('stats', {})
-    model_performance = csv_analysis.get('analysis_results', {}).get('linear_regression', {})
+    # Safely get data with fallbacks
+    csv_stats = csv_analysis.get('stats', {}) if csv_analysis else {}
+    model_performance = csv_analysis.get('analysis_results', {}).get('linear_regression', {}) if csv_analysis else {}
     
-    site_type = platform_setup.get('siteType', 'energy')
-    site_specs = platform_setup.get('siteSpecs', 'Standard energy site')
+    site_type = platform_setup.get('siteType', 'energy') if platform_setup else 'energy'
+    site_specs = platform_setup.get('siteSpecs', 'Standard energy site') if platform_setup else 'Standard energy site'
     
     # Process inspection data
     inspection_text = ""
@@ -189,6 +190,23 @@ def create_mock_summary_with_csv_analysis(csv_analysis, platform_setup, inspecti
     concern_count = len([i for i in inspections if 'concern' in i.get('status', '')])
     normal_count = len([i for i in inspections if i.get('status') == 'normal'])
     
+    # Safely format numeric values
+    data_points = csv_stats.get('data_points', 'N/A')
+    features = csv_stats.get('features', 'N/A')
+    target_column = csv_stats.get('target_column', 'N/A')
+    date_start = csv_stats.get('date_range', {}).get('start', 'N/A') if csv_stats.get('date_range') else 'N/A'
+    date_end = csv_stats.get('date_range', {}).get('end', 'N/A') if csv_stats.get('date_range') else 'N/A'
+    
+    # Safely format performance metrics
+    mean_output = csv_stats.get('target_stats', {}).get('mean', 'N/A')
+    std_output = csv_stats.get('target_stats', {}).get('std', 'N/A')
+    r2_score = model_performance.get('r2', 'N/A') if isinstance(model_performance, dict) else 'N/A'
+    
+    # Format numeric values safely
+    mean_str = f"{mean_output:.2f}" if isinstance(mean_output, (int, float)) else str(mean_output)
+    std_str = f"{std_output:.2f}" if isinstance(std_output, (int, float)) else str(std_output)
+    r2_str = f"{r2_score:.4f}" if isinstance(r2_score, (int, float)) else str(r2_score)
+    
     return f"""
 AI Analysis Summary for {site_name}
 
@@ -197,15 +215,15 @@ SITE CONFIGURATION:
 - Site Specifications: {site_specs}
 
 CSV DATA ANALYSIS:
-- Data points analyzed: {csv_stats.get('data_points', 'N/A')}
-- Features identified: {csv_stats.get('features', 'N/A')}
-- Target variable: {csv_stats.get('target_column', 'N/A')}
-- Date range: {csv_stats.get('date_range', {}).get('start', 'N/A')} to {csv_stats.get('date_range', {}).get('end', 'N/A')}
+- Data points analyzed: {data_points}
+- Features identified: {features}
+- Target variable: {target_column}
+- Date range: {date_start} to {date_end}
 
 PERFORMANCE METRICS:
-- Mean output: {csv_stats.get('target_stats', {}).get('mean', 'N/A'):.2f}
-- Standard deviation: {csv_stats.get('target_stats', {}).get('std', 'N/A'):.2f}
-- Model R² score: {model_performance.get('r2', 'N/A'):.4f}
+- Mean output: {mean_str}
+- Standard deviation: {std_str}
+- Model R² score: {r2_str}
 
 {inspection_text}
 
@@ -224,7 +242,7 @@ RECOMMENDATIONS:
 
 KEY INSIGHTS:
 - System performance analysis completed successfully
-- Model provides good predictive capability (R²: {model_performance.get('r2', 'N/A'):.4f})
+- Model provides good predictive capability (R²: {r2_str})
 - Inspection status provides operational guidance
 - Risk assessment based on both data analysis and inspection findings
 
