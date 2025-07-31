@@ -436,7 +436,7 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
         # Generate summary statistics
         stats = analyzer.generate_summary_stats()
         
-        # Generate plots (only if not in lightweight mode)
+        # Generate plots (always for PDF reports, but skip if lightweight mode and no charts needed)
         if not lightweight_mode:
             analyzer.generate_plots(output_dir, lightweight_mode)
         

@@ -238,14 +238,20 @@ class PDFReportGenerator:
                 if os.path.exists(clean_path):
                     # Add chart title
                     chart_name = os.path.basename(clean_path).replace('.png', '').replace('_', ' ').title()
-                    chart_title = Paragraph(f"Chart: {chart_name}", self.styles['BodyText'])
+                    chart_title = Paragraph(f"Chart: {chart_name}", self.styles['CustomBodyText'])
                     elements.append(chart_title)
                     elements.append(Spacer(1, 6))
                     
-                    # Add chart image
-                    img = Image(clean_path, width=6*inch, height=4*inch)
-                    elements.append(img)
-                    elements.append(Spacer(1, 12))
+                    # Add chart image with better sizing
+                    try:
+                        img = Image(clean_path, width=5*inch, height=3.5*inch, keepAspectRatio=True)
+                        elements.append(img)
+                        elements.append(Spacer(1, 12))
+                    except Exception as img_error:
+                        print(f"Error loading chart image {clean_path}: {str(img_error)}")
+                        # Add a placeholder if image fails
+                        elements.append(Paragraph(f"[Chart: {chart_name} - Image could not be loaded]", self.styles['CustomBodyText']))
+                        elements.append(Spacer(1, 12))
                 else:
                     print(f"Chart file not found: {clean_path}")
                     

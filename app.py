@@ -258,9 +258,9 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
         
         print(f"Summary generated: {bool(summary)}")
         
-        # Get chart file paths (only if not in lightweight mode)
+        # Get chart file paths (always include charts for PDF reports)
         chart_files = []
-        if not lightweight_mode and 'output_dir' in analysis_results:
+        if 'output_dir' in analysis_results:
             charts_dir = analysis_results['output_dir']
             try:
                 if os.path.exists(charts_dir):
