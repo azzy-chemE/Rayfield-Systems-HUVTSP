@@ -286,6 +286,25 @@ if (runAIButton) {
                 aiResult.innerHTML = resultHtml;
                 aiStatus = 'analysis-complete';
                 addAlert('AI Analysis Complete', 'Comprehensive analysis generated using Qwen AI model');
+                
+                // Add PDF download button
+                const pdfButton = document.createElement('button');
+                pdfButton.textContent = '📄 Download PDF Report';
+                pdfButton.style.cssText = `
+                    background: #007bff;
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    margin-top: 1rem;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                `;
+                pdfButton.addEventListener('click', () => downloadPDFReport(result, platformSetup));
+                aiResult.appendChild(pdfButton);
             } else {
                 aiResult.innerHTML = `<span class="status-critical">AI Analysis Failed: ${result.error}</span>`;
                 aiStatus = 'analysis-failed';
@@ -358,4 +377,78 @@ function updateStatusTab() {
         html += '<ul style="margin-top:1rem;">' + alerts.map(a => `<li>${a.title}: ${a.description}</li>`).join('') + '</ul>';
     }
     statusSummary.innerHTML = html;
+}
+
+// Function to download PDF report
+async function downloadPDFReport(analysisResult, platformSetup) {
+    try {
+        // Show loading state
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = '📄 Generating PDF...';
+        button.disabled = true;
+        
+        // Prepare data for PDF generation
+        const pdfData = {
+            summary: analysisResult.summary,
+            stats: analysisResult.stats,
+            charts: analysisResult.charts || [],
+            site_name: platformSetup.siteType || 'Energy Site'
+        };
+        
+        // Call PDF generation endpoint
+        const response = await fetch('/api/generate-pdf-report', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(pdfData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Convert base64 to blob and download
+            const pdfBlob = base64ToBlob(result.pdf_data, 'application/pdf');
+            const url = URL.createObjectURL(pdfBlob);
+            
+            // Create download link
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = result.filename;
+            downloadLink.style.display = 'none';
+            
+            // Trigger download
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+            
+            addAlert('PDF Report Downloaded', `Report saved as: ${result.filename}`);
+        } else {
+            alert(`PDF generation failed: ${result.error}`);
+        }
+        
+    } catch (error) {
+        console.error('PDF download error:', error);
+        alert('Failed to generate PDF report. Please try again.');
+    } finally {
+        // Restore button state
+        const button = event.target;
+        button.textContent = originalText;
+        button.disabled = false;
+    }
+}
+
+// Helper function to convert base64 to blob
+function base64ToBlob(base64, mimeType) {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mimeType });
 } 

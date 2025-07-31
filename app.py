@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 from dotenv import load_dotenv
 from ai_summary_generator import generate_comprehensive_analysis, generate_summary_from_user_data_only, qwen_summary, generate_weekly_summary, generate_weekly_summary_with_user_data, create_mock_summary_with_csv_analysis
+from pdf_generator import generate_pdf_report
 import werkzeug
 
 # Load environment variables from .env file
@@ -341,6 +342,52 @@ def get_status():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# API endpoint for generating and downloading PDF report
+@app.route('/api/generate-pdf-report', methods=['POST'])
+def generate_pdf_report_endpoint():
+    try:
+        # Ensure request has JSON content
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid JSON data'}), 400
+        
+        summary = data.get('summary')
+        stats = data.get('stats', {})
+        charts = data.get('charts', [])
+        site_name = data.get('site_name', 'Energy Site')
+        
+        if not summary:
+            return jsonify({'error': 'Summary data required'}), 400
+        
+        # Generate PDF report
+        print("Generating PDF report...")
+        pdf_base64 = generate_pdf_report(summary, stats, charts, site_name)
+        
+        if pdf_base64:
+            # Create filename with timestamp
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"AI_Analysis_Report_{site_name.replace(' ', '_')}_{timestamp}.pdf"
+            
+            return jsonify({
+                'success': True,
+                'pdf_data': pdf_base64,
+                'filename': filename,
+                'message': 'PDF report generated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to generate PDF report'
+            }), 500
+            
+    except Exception as e:
+        print(f"Error in generate_pdf_report_endpoint: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'error': f'PDF generation failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     # Memory-efficient configuration
