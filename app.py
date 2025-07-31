@@ -194,6 +194,23 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
         print("Starting data analysis...")
         analysis_results = energy_analysis.analyze_energy_csv(csv_file_path, output_dir='static/charts', lightweight_mode=lightweight_mode)
         
+        # Clean NaN values from the response for JSON compatibility
+        def clean_nan_values(obj):
+            if isinstance(obj, dict):
+                return {k: clean_nan_values(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_nan_values(v) for v in obj]
+            elif hasattr(obj, 'dtype') and hasattr(obj, 'item'):  # numpy/pandas types
+                if pd.isna(obj):
+                    return None
+                else:
+                    return float(obj) if hasattr(obj, 'item') else obj
+            else:
+                return obj
+        
+        # Clean the analysis results
+        analysis_results = clean_nan_values(analysis_results)
+        
         # Get basic stats
         stats = {
             'data_points': analysis_results.get('stats', {}).get('data_points', 0),

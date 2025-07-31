@@ -381,18 +381,28 @@ class EnergyDataAnalyzer:
             }
         
         if self.target_column:
+            # Convert NaN values to None for JSON compatibility
+            mean_val = self.df[self.target_column].mean()
+            std_val = self.df[self.target_column].std()
+            min_val = self.df[self.target_column].min()
+            max_val = self.df[self.target_column].max()
+            median_val = self.df[self.target_column].median()
+            
             stats['target_stats'] = {
-                'mean': self.df[self.target_column].mean(),
-                'std': self.df[self.target_column].std(),
-                'min': self.df[self.target_column].min(),
-                'max': self.df[self.target_column].max(),
-                'median': self.df[self.target_column].median()
+                'mean': float(mean_val) if not pd.isna(mean_val) else None,
+                'std': float(std_val) if not pd.isna(std_val) else None,
+                'min': float(min_val) if not pd.isna(min_val) else None,
+                'max': float(max_val) if not pd.isna(max_val) else None,
+                'median': float(median_val) if not pd.isna(median_val) else None
             }
         
         if 'linear_regression' in self.analysis_results:
+            mse_val = self.analysis_results['linear_regression']['mse']
+            r2_val = self.analysis_results['linear_regression']['r2']
+            
             stats['model_performance'] = {
-                'mse': self.analysis_results['linear_regression']['mse'],
-                'r2': self.analysis_results['linear_regression']['r2']
+                'mse': float(mse_val) if not pd.isna(mse_val) else None,
+                'r2': float(r2_val) if not pd.isna(r2_val) else None
             }
         
         return stats
