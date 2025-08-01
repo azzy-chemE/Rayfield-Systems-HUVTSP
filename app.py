@@ -260,21 +260,35 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
         
         # Get chart file paths (always include charts for PDF reports)
         chart_files = []
+        print(f"Analysis results keys: {list(analysis_results.keys())}")
+        print(f"Output dir: {analysis_results.get('output_dir', 'Not found')}")
+        
         if 'output_dir' in analysis_results:
             charts_dir = analysis_results['output_dir']
             try:
                 if os.path.exists(charts_dir):
-                    for file in os.listdir(charts_dir):
+                    print(f"Charts directory exists: {charts_dir}")
+                    files_in_dir = os.listdir(charts_dir)
+                    print(f"Files in charts directory: {files_in_dir}")
+                    for file in files_in_dir:
                         if file.endswith('.png'):
-                            chart_files.append(f'/static/charts/{file}')
+                            chart_path = f'/static/charts/{file}'
+                            chart_files.append(chart_path)
+                            print(f"Added chart: {chart_path}")
+                else:
+                    print(f"Charts directory does not exist: {charts_dir}")
             except Exception as e:
                 print(f"Warning: Could not access charts directory: {e}")
                 # Continue without charts
+        
+        print(f"Total charts found: {len(chart_files)}")
+        print(f"Chart files: {chart_files}")
         
         # Clean up memory
         gc.collect()
         
         if summary:
+            print(f"Returning success with {len(chart_files)} charts")
             return {
                 'success': True,
                 'summary': summary,
@@ -382,6 +396,10 @@ def generate_pdf_report_endpoint():
         
         # Generate PDF report
         print("Generating PDF report...")
+        print(f"Summary length: {len(summary) if summary else 0}")
+        print(f"Stats keys: {list(stats.keys()) if stats else 'None'}")
+        print(f"Charts count: {len(charts) if charts else 0}")
+        print(f"Site name: {site_name}")
         pdf_base64 = generate_pdf_report(summary, stats, charts, site_name)
         
         if pdf_base64:
