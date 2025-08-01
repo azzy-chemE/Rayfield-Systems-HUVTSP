@@ -167,9 +167,8 @@ class EnergyDataAnalyzer:
             output_dir (str): Directory to save plots
             lightweight_mode (bool): If True, skip chart generation to save memory
         """
-        if lightweight_mode:
-            print("Lightweight mode enabled - skipping chart generation")
-            return
+        # Note: Charts are always generated for PDF reports, even in lightweight mode
+        # The lightweight_mode parameter is kept for future browser display control
         
         try:
             # Create output directory
@@ -436,9 +435,8 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
         # Generate summary statistics
         stats = analyzer.generate_summary_stats()
         
-        # Generate plots (always for PDF reports, but skip if lightweight mode and no charts needed)
-        if not lightweight_mode:
-            analyzer.generate_plots(output_dir, lightweight_mode)
+        # Generate plots (always for PDF reports, regardless of lightweight mode)
+        analyzer.generate_plots(output_dir, lightweight_mode)
         
         # Prepare analysis results
         analysis_results = {
@@ -454,7 +452,7 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
         return {
             'analysis_results': analysis_results,
             'stats': stats,
-            'output_dir': output_dir if not lightweight_mode else None,
+            'output_dir': output_dir,  # Always include output_dir for PDF generation
             'lightweight_mode': lightweight_mode
         }
         
