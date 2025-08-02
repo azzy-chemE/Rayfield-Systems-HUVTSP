@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
@@ -12,6 +14,12 @@ from datetime import datetime
 import warnings
 import gc
 warnings.filterwarnings('ignore')
+
+# Configure matplotlib for server environment
+plt.rcParams['font.family'] = 'DejaVu Sans'
+plt.rcParams['font.size'] = 10
+plt.rcParams['figure.dpi'] = 100
+plt.rcParams['figure.figsize'] = (8, 6)
 
 class EnergyDataAnalyzer:
     """
@@ -159,6 +167,22 @@ class EnergyDataAnalyzer:
             print(f"Error training model: {str(e)}")
             return False
     
+    def _create_simple_chart(self, output_dir, chart_name, data, title, xlabel, ylabel):
+        """Create a simple chart as fallback"""
+        try:
+            plt.figure(figsize=(8, 6))
+            plt.plot(data)
+            plt.title(title)
+            plt.xlabel(xlabel)
+            plt.ylabel(ylabel)
+            plt.tight_layout()
+            plt.savefig(f'{output_dir}/{chart_name}.png', dpi=100, bbox_inches='tight')
+            plt.close()
+            return True
+        except Exception as e:
+            print(f"Failed to create simple chart {chart_name}: {str(e)}")
+            return False
+
     def generate_plots(self, output_dir='plots', lightweight_mode=False):
         """
         Generate all analysis plots
@@ -174,21 +198,29 @@ class EnergyDataAnalyzer:
             # Create output directory
             os.makedirs(output_dir, exist_ok=True)
             
-            # Set memory-efficient plot parameters
-            plt.rcParams['figure.dpi'] = 100
-            plt.rcParams['figure.figsize'] = (8, 6)
-            
             print("Generating plots...")
             
-            # Generate each plot type
-            self._plot_time_series(output_dir)
-            self._plot_regression_results(output_dir)
-            self._plot_feature_importance(output_dir)
-            self._plot_rolling_averages(output_dir)
-            self._plot_correlation_heatmap(output_dir)
-            self._plot_distributions(output_dir)
+            # Generate each plot type with timeout protection
+            plot_functions = [
+                self._plot_time_series,
+                self._plot_regression_results,
+                self._plot_feature_importance,
+                self._plot_rolling_averages,
+                self._plot_correlation_heatmap,
+                self._plot_distributions
+            ]
             
-            print(f"All plots saved to {output_dir}")
+            successful_plots = 0
+            for plot_func in plot_functions:
+                try:
+                    plot_func(output_dir)
+                    successful_plots += 1
+                    print(f"Generated {plot_func.__name__}")
+                except Exception as e:
+                    print(f"Warning: Failed to generate {plot_func.__name__}: {str(e)}")
+                    continue
+            
+            print(f"Successfully generated {successful_plots}/{len(plot_functions)} plots in {output_dir}")
             
         except Exception as e:
             print(f"Error generating plots: {str(e)}")
@@ -419,6 +451,8 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
         dict: Analysis results and statistics
     """
     try:
+        print("Starting data analysis...")
+        
         # Initialize analyzer
         analyzer = EnergyDataAnalyzer(csv_file_path)
         
@@ -426,15 +460,19 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
         if not analyzer.load_and_prepare_data():
             return {'error': 'Failed to load data'}
         
+        print("Creating rolling averages...")
         # Create rolling averages
         analyzer.create_rolling_averages()
         
+        print("Training linear regression model...")
         # Train linear regression model
         model_results = analyzer.train_linear_regression()
         
+        print("Generating summary statistics...")
         # Generate summary statistics
         stats = analyzer.generate_summary_stats()
         
+        print("Generating plots for PDF...")
         # Generate plots (always for PDF reports, regardless of lightweight mode)
         analyzer.generate_plots(output_dir, lightweight_mode)
         
@@ -445,6 +483,7 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
             'summary_stats': stats
         }
         
+        print("Cleaning up memory...")
         # Clean up memory
         del analyzer
         gc.collect()
