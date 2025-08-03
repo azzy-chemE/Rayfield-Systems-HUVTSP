@@ -206,6 +206,7 @@ class EnergyDataAnalyzer:
                 self._plot_regression_results,
                 self._plot_feature_importance,
                 self._plot_rolling_averages,
+                self._plot_anomaly_detection,
                 self._plot_correlation_heatmap,
                 self._plot_distributions
             ]
@@ -231,64 +232,112 @@ class EnergyDataAnalyzer:
     
     def _plot_time_series(self, output_dir):
         """Plot time series of the target variable"""
-        plt.figure(figsize=(10, 5))
-        # Sample data if too large to reduce memory usage
-        if len(self.df) > 10000:
-            sample_df = self.df.sample(n=10000, random_state=42)
-        else:
-            sample_df = self.df
-            
-        plt.plot(sample_df[self.datetime_column], sample_df[self.target_column], alpha=0.7, linewidth=0.5)
-        plt.title(f'{self.target_column} Over Time')
-        plt.xlabel('Time')
-        plt.ylabel(self.target_column)
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig(f'{output_dir}/time_series.png', dpi=150, bbox_inches='tight')
-        plt.close()
+        try:
+            plt.figure(figsize=(10, 5))
+            # Sample data if too large to reduce memory usage
+            if len(self.df) > 10000:
+                sample_df = self.df.sample(n=10000, random_state=42)
+            else:
+                sample_df = self.df
+                
+            plt.plot(sample_df[self.datetime_column], sample_df[self.target_column], alpha=0.7, linewidth=0.5)
+            plt.title(f'{self.target_column} Over Time')
+            plt.xlabel('Time')
+            plt.ylabel(self.target_column)
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig(f'{output_dir}/time_series.png', dpi=150, bbox_inches='tight')
+            plt.close()
+        except Exception as e:
+            print(f"Error in _plot_time_series: {str(e)}")
+            # Create a simple fallback chart
+            self._create_simple_chart(output_dir, 'time_series', 
+                                   self.df[self.target_column].values if self.target_column else [0], 
+                                   'Time Series', 'Index', self.target_column or 'Value')
     
     def _plot_regression_results(self, output_dir):
-        """Plot regression results"""
+        """Plot comprehensive linear regression results"""
         results = self.analysis_results['linear_regression']
         actual = results['predictions']['actual']
         predicted = results['predictions']['predicted']
         
-        plt.figure(figsize=(8, 6))
+        plt.figure(figsize=(12, 8))
         
-        # Scatter plot
-        plt.subplot(2, 2, 1)
-        plt.scatter(actual, predicted, alpha=0.5, s=20)
-        plt.plot([actual.min(), actual.max()], [actual.min(), actual.max()], 'r--', lw=2)
+        # Scatter plot with regression line
+        plt.subplot(2, 3, 1)
+        plt.scatter(actual, predicted, alpha=0.6, s=30, color='blue')
+        plt.plot([actual.min(), actual.max()], [actual.min(), actual.max()], 'r--', lw=2, label='Perfect Prediction')
         plt.xlabel('Actual Values')
         plt.ylabel('Predicted Values')
         plt.title('Prediction vs Actual')
+        plt.legend()
         
         # Residuals plot
-        plt.subplot(2, 2, 2)
+        plt.subplot(2, 3, 2)
         residuals = actual - predicted
-        plt.scatter(predicted, residuals, alpha=0.5, s=20)
-        plt.axhline(y=0, color='r', linestyle='--')
+        plt.scatter(predicted, residuals, alpha=0.6, s=30, color='green')
+        plt.axhline(y=0, color='r', linestyle='--', alpha=0.8)
         plt.xlabel('Predicted Values')
         plt.ylabel('Residuals')
         plt.title('Residuals Plot')
         
-        # Metrics text
-        plt.subplot(2, 2, 3)
-        plt.text(0.1, 0.8, f'MSE: {results["mse"]:.2f}', fontsize=10)
-        plt.text(0.1, 0.6, f'R²: {results["r2"]:.4f}', fontsize=10)
-        plt.text(0.1, 0.4, f'Features: {len(self.feature_columns)}', fontsize=10)
-        plt.axis('off')
-        plt.title('Model Metrics')
-        
         # Histogram of residuals
-        plt.subplot(2, 2, 4)
-        plt.hist(residuals, bins=20, alpha=0.7, edgecolor='black')
+        plt.subplot(2, 3, 3)
+        plt.hist(residuals, bins=25, alpha=0.7, edgecolor='black', color='orange')
         plt.xlabel('Residuals')
         plt.ylabel('Frequency')
         plt.title('Residuals Distribution')
         
+        # Model performance metrics
+        plt.subplot(2, 3, 4)
+        metrics_text = f'Linear Regression Model Performance\n\n' \
+                      f'MSE: {results["mse"]:.4f}\n' \
+                      f'R² Score: {results["r2"]:.4f}\n' \
+                      f'Features Used: {len(self.feature_columns)}\n' \
+                      f'Data Points: {len(actual)}\n' \
+                      f'Mean Residual: {residuals.mean():.4f}\n' \
+                      f'Std Residual: {residuals.std():.4f}'
+        plt.text(0.1, 0.5, metrics_text, fontsize=10, verticalalignment='center',
+                bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
+        plt.axis('off')
+        plt.title('Model Performance Metrics')
+        
+        # Feature importance (top features)
+        plt.subplot(2, 3, 5)
+        importance = results['feature_importance']
+        if importance:
+            # Sort by absolute importance and take top 8
+            sorted_features = sorted(importance.items(), key=lambda x: abs(x[1]), reverse=True)[:8]
+            features, importances = zip(*sorted_features)
+            
+            colors = ['red' if x < 0 else 'blue' for x in importances]
+            plt.barh(range(len(features)), importances, color=colors, alpha=0.7)
+            plt.yticks(range(len(features)), [f.replace('_', ' ').title() for f in features])
+            plt.xlabel('Coefficient Value')
+            plt.title('Top Feature Importance')
+        
+        # Prediction accuracy over range
+        plt.subplot(2, 3, 6)
+        # Calculate accuracy by value ranges
+        value_ranges = np.linspace(actual.min(), actual.max(), 5)
+        accuracies = []
+        for i in range(len(value_ranges)-1):
+            mask = (actual >= value_ranges[i]) & (actual < value_ranges[i+1])
+            if mask.sum() > 0:
+                range_residuals = residuals[mask]
+                accuracy = 1 - (np.abs(range_residuals) / actual[mask]).mean()
+                accuracies.append(accuracy)
+            else:
+                accuracies.append(0)
+        
+        plt.bar(range(len(accuracies)), accuracies, alpha=0.7, color='purple')
+        plt.xlabel('Value Range')
+        plt.ylabel('Prediction Accuracy')
+        plt.title('Accuracy by Value Range')
+        plt.ylim(0, 1)
+        
         plt.tight_layout()
-        plt.savefig(f'{output_dir}/regression_results.png', dpi=150, bbox_inches='tight')
+        plt.savefig(f'{output_dir}/regression_results.png', dpi=300, bbox_inches='tight')
         plt.close()
     
     def _plot_feature_importance(self, output_dir):
@@ -312,15 +361,15 @@ class EnergyDataAnalyzer:
         plt.close()
     
     def _plot_rolling_averages(self, output_dir):
-        """Plot rolling averages"""
+        """Plot rolling averages with enhanced statistics"""
         rolling_cols = [col for col in self.df.columns if col.startswith('rolling_')]
         
         if rolling_cols and self.datetime_column:
-            plt.figure(figsize=(12, 6))
+            plt.figure(figsize=(14, 8))
             
             # Plot original data
             plt.plot(self.df[self.datetime_column], self.df[self.target_column], 
-                    alpha=0.5, label='Original Data', color='gray')
+                    alpha=0.5, label='Original Data', color='gray', linewidth=1)
             
             # Plot rolling averages
             colors = ['red', 'blue', 'green', 'orange']
@@ -329,7 +378,20 @@ class EnergyDataAnalyzer:
                         label=col.replace('_', ' ').title(), 
                         color=colors[i % len(colors)], linewidth=2)
             
-            plt.title(f'{self.target_column} with Rolling Averages')
+            # Add mean and median lines
+            mean_val = self.df[self.target_column].mean()
+            median_val = self.df[self.target_column].median()
+            plt.axhline(y=mean_val, color='purple', linestyle='--', alpha=0.8, 
+                       label=f'Mean: {mean_val:.2f}')
+            plt.axhline(y=median_val, color='brown', linestyle='--', alpha=0.8, 
+                       label=f'Median: {median_val:.2f}')
+            
+            # Add statistics text box
+            stats_text = f'Statistics:\nMean: {mean_val:.2f}\nMedian: {median_val:.2f}\nStd: {self.df[self.target_column].std():.2f}\nMin: {self.df[self.target_column].min():.2f}\nMax: {self.df[self.target_column].max():.2f}'
+            plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes, 
+                    verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            
+            plt.title(f'{self.target_column} with Rolling Averages and Statistics')
             plt.xlabel('Time')
             plt.ylabel(self.target_column)
             plt.legend()
@@ -337,6 +399,76 @@ class EnergyDataAnalyzer:
             plt.tight_layout()
             plt.savefig(f'{output_dir}/rolling_averages.png', dpi=300, bbox_inches='tight')
             plt.close()
+    
+    def _plot_anomaly_detection(self, output_dir):
+        """Plot anomaly detection using statistical methods"""
+        if self.target_column is None:
+            return
+            
+        plt.figure(figsize=(12, 8))
+        
+        # Calculate statistics for anomaly detection
+        data = self.df[self.target_column].dropna()
+        mean_val = data.mean()
+        std_val = data.std()
+        
+        # Define anomaly thresholds (2 standard deviations)
+        upper_threshold = mean_val + 2 * std_val
+        lower_threshold = mean_val - 2 * std_val
+        
+        # Plot original data
+        if self.datetime_column:
+            plt.plot(self.df[self.datetime_column], self.df[self.target_column], 
+                    alpha=0.7, label='Original Data', color='blue', linewidth=1)
+        else:
+            plt.plot(self.df[self.target_column].values, alpha=0.7, 
+                    label='Original Data', color='blue', linewidth=1)
+        
+        # Identify and highlight anomalies
+        anomalies = self.df[
+            (self.df[self.target_column] > upper_threshold) | 
+            (self.df[self.target_column] < lower_threshold)
+        ]
+        
+        if len(anomalies) > 0:
+            if self.datetime_column:
+                plt.scatter(anomalies[self.datetime_column], anomalies[self.target_column], 
+                           color='red', s=50, label=f'Anomalies ({len(anomalies)})', zorder=5)
+            else:
+                anomaly_indices = anomalies.index
+                plt.scatter(anomaly_indices, anomalies[self.target_column], 
+                           color='red', s=50, label=f'Anomalies ({len(anomalies)})', zorder=5)
+        
+        # Add threshold lines
+        if self.datetime_column:
+            plt.axhline(y=upper_threshold, color='red', linestyle='--', alpha=0.7, 
+                       label=f'Upper Threshold (+2σ): {upper_threshold:.2f}')
+            plt.axhline(y=lower_threshold, color='red', linestyle='--', alpha=0.7, 
+                       label=f'Lower Threshold (-2σ): {lower_threshold:.2f}')
+        else:
+            plt.axhline(y=upper_threshold, color='red', linestyle='--', alpha=0.7, 
+                       label=f'Upper Threshold (+2σ): {upper_threshold:.2f}')
+            plt.axhline(y=lower_threshold, color='red', linestyle='--', alpha=0.7, 
+                       label=f'Lower Threshold (-2σ): {lower_threshold:.2f}')
+        
+        # Add mean line
+        plt.axhline(y=mean_val, color='green', linestyle='-', alpha=0.8, 
+                   label=f'Mean: {mean_val:.2f}')
+        
+        # Add statistics text box
+        stats_text = f'Anomaly Detection Stats:\nMean: {mean_val:.2f}\nStd: {std_val:.2f}\nAnomalies: {len(anomalies)}\nThreshold: ±2σ'
+        plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes, 
+                verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        plt.title(f'Anomaly Detection for {self.target_column}')
+        plt.xlabel('Time' if self.datetime_column else 'Data Point')
+        plt.ylabel(self.target_column)
+        plt.legend()
+        if self.datetime_column:
+            plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(f'{output_dir}/anomaly_detection.png', dpi=300, bbox_inches='tight')
+        plt.close()
     
     def _plot_correlation_heatmap(self, output_dir):
         """Plot correlation heatmap"""
@@ -474,7 +606,11 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
         
         print("Generating plots for PDF...")
         # Generate plots (always for PDF reports, regardless of lightweight mode)
-        analyzer.generate_plots(output_dir, lightweight_mode)
+        try:
+            analyzer.generate_plots(output_dir, lightweight_mode)
+        except Exception as plot_error:
+            print(f"Warning: Chart generation failed: {str(plot_error)}")
+            # Continue without charts if they fail
         
         # Prepare analysis results
         analysis_results = {
@@ -495,8 +631,70 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
             'lightweight_mode': lightweight_mode
         }
         
+    except MemoryError as e:
+        print(f"Memory error in analyze_energy_csv: {str(e)}")
+        gc.collect()
+        return {'error': 'Memory limit exceeded. Try using lightweight mode.'}
     except Exception as e:
         print(f"Error in analyze_energy_csv: {str(e)}")
+        return {'error': str(e)}
+
+def analyze_energy_csv_quick(csv_file_path):
+    """
+    Quick analysis without chart generation for faster results
+    
+    Args:
+        csv_file_path (str): Path to the CSV file
+    
+    Returns:
+        dict: Analysis results and statistics (no charts)
+    """
+    try:
+        print("Starting quick data analysis...")
+        
+        # Initialize analyzer
+        analyzer = EnergyDataAnalyzer(csv_file_path)
+        
+        # Load and prepare data
+        if not analyzer.load_and_prepare_data():
+            return {'error': 'Failed to load data'}
+        
+        print("Creating rolling averages...")
+        # Create rolling averages
+        analyzer.create_rolling_averages()
+        
+        print("Training linear regression model...")
+        # Train linear regression model
+        model_results = analyzer.train_linear_regression()
+        
+        print("Generating summary statistics...")
+        # Generate summary statistics
+        stats = analyzer.generate_summary_stats()
+        
+        # Prepare analysis results (no charts)
+        analysis_results = {
+            'linear_regression': model_results,
+            'feature_importance': analyzer.analysis_results.get('feature_importance', {}),
+            'summary_stats': stats
+        }
+        
+        print("Cleaning up memory...")
+        # Clean up memory
+        del analyzer
+        gc.collect()
+        
+        return {
+            'analysis_results': analysis_results,
+            'stats': stats,
+            'mode': 'quick'
+        }
+        
+    except MemoryError as e:
+        print(f"Memory error in analyze_energy_csv_quick: {str(e)}")
+        gc.collect()
+        return {'error': 'Memory limit exceeded during quick analysis.'}
+    except Exception as e:
+        print(f"Error in analyze_energy_csv_quick: {str(e)}")
         return {'error': str(e)}
 
 if __name__ == "__main__":

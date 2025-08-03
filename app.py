@@ -123,11 +123,10 @@ def run_ai_analysis():
         if not inspections:
             return jsonify({'error': 'Inspection data required'}), 400
         
-        # Optional: Force lightweight mode on Render to prevent timeouts
-        # Uncomment the lines below if you want to force lightweight mode on Render
-        # if IS_RENDER and not lightweight_mode:
-        #     print("Forcing lightweight mode on Render to prevent timeouts")
-        #     lightweight_mode = True
+        # Force lightweight mode on Render to prevent timeouts
+        if IS_RENDER and not lightweight_mode:
+            print("Forcing lightweight mode on Render to prevent timeouts")
+            lightweight_mode = True
         
         # Run the AI summary generator with user data
         result = run_ai_summary_generator(platform_setup, inspections, lightweight_mode)
@@ -136,6 +135,20 @@ def run_ai_analysis():
         elapsed_time = time.time() - start_time
         if IS_RENDER and elapsed_time > 25:
             print(f"Warning: Request taking too long ({elapsed_time:.2f}s)")
+            # Force return with partial results to prevent timeout
+            if result.get('success'):
+                return jsonify({
+                    'success': True,
+                    'summary': result.get('summary', 'Analysis completed with timeout warning'),
+                    'stats': result.get('stats', {}),
+                    'charts': result.get('charts', []),
+                    'analysis_results': result.get('analysis_results', {}),
+                    'csv_stats': result.get('csv_stats', {}),
+                    'message': 'AI analysis completed (partial results due to timeout)',
+                    'note': 'Request was taking too long, returning partial results',
+                    'lightweight_mode': lightweight_mode,
+                    'elapsed_time': elapsed_time
+                })
         
         if result['success']:
             return jsonify({
@@ -320,6 +333,179 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
             'error': f'AI summary generation failed: {str(e)}'
         }
 
+# API endpoint for quick AI analysis (fast mode)
+@app.route('/api/quick-ai-analysis', methods=['POST'])
+def quick_ai_analysis():
+    start_time = time.time()
+    
+    try:
+        # Ensure request has JSON content
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid JSON data'}), 400
+        
+        platform_setup = data.get('platformSetup')
+        inspections = data.get('inspections', [])
+        
+        if not platform_setup:
+            return jsonify({'error': 'Platform setup required'}), 400
+        
+        if not inspections:
+            return jsonify({'error': 'Inspection data required'}), 400
+        
+        # Run quick analysis (no charts, just stats and summary)
+        result = run_quick_analysis(platform_setup, inspections)
+        
+        elapsed_time = time.time() - start_time
+        
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'summary': result['summary'],
+                'stats': result['stats'],
+                'csv_stats': result.get('csv_stats', {}),
+                'message': 'Quick analysis completed successfully',
+                'elapsed_time': elapsed_time,
+                'mode': 'quick'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error']
+            }), 500
+            
+    except Exception as e:
+        print(f"Error in quick_ai_analysis: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+def run_quick_analysis(platform_setup, inspections):
+    """
+    Run quick analysis without heavy chart generation
+    """
+    try:
+        # Check if we have uploaded CSV data
+        csv_file_path = None
+        if uploaded_csv_data is not None and uploaded_csv_filename:
+            csv_file_path = 'uploaded_data.csv'
+            print(f"Using uploaded CSV file: {uploaded_csv_filename}")
+        elif os.path.exists('cleaned_data.csv'):
+            csv_file_path = 'cleaned_data.csv'
+            print("Using fallback cleaned_data.csv")
+        else:
+            return {
+                'success': False,
+                'error': 'No CSV data available. Please upload a CSV file first.'
+            }
+        
+        # Import energy_analysis here to avoid memory issues
+        import energy_analysis
+        
+        # Perform quick data analysis (no charts)
+        print("Starting quick data analysis...")
+        analysis_results = energy_analysis.analyze_energy_csv_quick(csv_file_path)
+        
+        # Clean NaN values from the response for JSON compatibility
+        def clean_nan_values(obj):
+            if isinstance(obj, dict):
+                return {k: clean_nan_values(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [clean_nan_values(v) for v in obj]
+            elif hasattr(obj, 'dtype') and hasattr(obj, 'item'):  # numpy/pandas types
+                if pd.isna(obj):
+                    return None
+                else:
+                    return float(obj) if hasattr(obj, 'item') else obj
+            else:
+                return obj
+        
+        # Clean the analysis results
+        analysis_results = clean_nan_values(analysis_results)
+        
+        # Get basic stats
+        stats = {
+            'data_points': analysis_results.get('stats', {}).get('data_points', 0),
+            'features': analysis_results.get('stats', {}).get('features', 0),
+            'target_variable': analysis_results.get('stats', {}).get('target_column', 'Unknown'),
+            'date_range': analysis_results.get('stats', {}).get('date_range', 'Unknown'),
+            'uploaded_filename': uploaded_csv_filename if uploaded_csv_filename else 'cleaned_data.csv'
+        }
+        
+        # Generate AI summary
+        print("Generating AI summary...")
+        summary = None
+        
+        # Construct prompt for AI analysis
+        analysis_text = analysis_results.get('analysis_results', '')
+        inspection_text = f"Platform Setup: {platform_setup}\nInspections: {inspections}"
+        
+        prompt = f"""
+        Based on the following energy data analysis and inspection information, provide a comprehensive summary:
+
+        ENERGY DATA ANALYSIS:
+        {analysis_text}
+
+        INSPECTION INFORMATION:
+        {inspection_text}
+
+        Please provide:
+        1. Key findings from the energy data
+        2. Recommendations based on the inspection data
+        3. Overall assessment of the energy system
+        """
+        
+        try:
+            summary = qwen_summary(prompt)
+        except Exception as e:
+            print(f"AI API error: {str(e)}")
+            summary = None
+        
+        # If API fails, use mock summary
+        if not summary:
+            print("API failed, using mock summary...")
+            summary = create_mock_summary_with_csv_analysis(
+                analysis_results, platform_setup, inspections, "Renewable Energy Site"
+            )
+        
+        print(f"Summary generated: {bool(summary)}")
+        
+        # Clean up memory
+        gc.collect()
+        
+        if summary:
+            print(f"Returning quick analysis results")
+            return {
+                'success': True,
+                'summary': summary,
+                'stats': stats,
+                'analysis_results': analysis_results.get('analysis_results', {}),
+                'csv_stats': analysis_results.get('stats', {}),
+                'mode': 'quick'
+            }
+        else:
+            return {
+                'success': False,
+                'error': 'Failed to generate summary - no response from AI model'
+            }
+            
+    except MemoryError as e:
+        print(f"Memory error in run_quick_analysis: {str(e)}")
+        gc.collect()
+        return {
+            'success': False,
+            'error': 'Memory limit exceeded during quick analysis.'
+        }
+    except Exception as e:
+        print(f"Error in run_quick_analysis: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return {
+            'success': False,
+            'error': f'Quick analysis failed: {str(e)}'
+        }
+
 # Debug endpoint to show all routes
 @app.route('/api/debug', methods=['GET'])
 def debug_endpoint():
@@ -400,7 +586,21 @@ def generate_pdf_report_endpoint():
         print(f"Stats keys: {list(stats.keys()) if stats else 'None'}")
         print(f"Charts count: {len(charts) if charts else 0}")
         print(f"Site name: {site_name}")
-        pdf_base64 = generate_pdf_report(summary, stats, charts, site_name)
+        
+        try:
+            pdf_base64 = generate_pdf_report(summary, stats, charts, site_name)
+        except Exception as pdf_error:
+            print(f"PDF generation error: {str(pdf_error)}")
+            # Try to generate PDF without charts if charts are causing issues
+            try:
+                print("Retrying PDF generation without charts...")
+                pdf_base64 = generate_pdf_report(summary, stats, [], site_name)
+            except Exception as retry_error:
+                print(f"PDF generation retry failed: {str(retry_error)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'PDF generation failed: {str(retry_error)}'
+                }), 500
         
         if pdf_base64:
             # Create filename with timestamp
