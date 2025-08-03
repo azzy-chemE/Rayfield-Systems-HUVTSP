@@ -239,8 +239,14 @@ class PDFReportGenerator:
         if charts:
             for chart_path in charts:
                 try:
-                    # Remove leading slash if present
-                    clean_path = chart_path.lstrip('/')
+                    # Handle both URL paths and file paths
+                    if chart_path.startswith('/static/charts/'):
+                        # Convert URL path to file path
+                        clean_path = chart_path.replace('/static/charts/', 'static/charts/')
+                    else:
+                        # Remove leading slash if present
+                        clean_path = chart_path.lstrip('/')
+                    
                     print(f"Processing chart: {clean_path}")
                     
                     if os.path.exists(clean_path):
@@ -264,6 +270,37 @@ class PDFReportGenerator:
                             elements.append(Spacer(1, 12))
                     else:
                         print(f"Chart file not found: {clean_path}")
+                        # Try alternative paths
+                        alt_paths = [
+                            clean_path,
+                            f"static/charts/{os.path.basename(clean_path)}",
+                            f"static/charts/{os.path.basename(chart_path)}",
+                            chart_path.lstrip('/')
+                        ]
+                        
+                        chart_found = False
+                        for alt_path in alt_paths:
+                            if os.path.exists(alt_path):
+                                print(f"Found chart at alternative path: {alt_path}")
+                                chart_name = os.path.basename(alt_path).replace('.png', '').replace('_', ' ').title()
+                                chart_title = Paragraph(f"Chart: {chart_name}", self.styles['CustomBodyText'])
+                                elements.append(chart_title)
+                                elements.append(Spacer(1, 6))
+                                
+                                try:
+                                    img = Image(alt_path, width=5*inch, height=3.5*inch, keepAspectRatio=True)
+                                    elements.append(img)
+                                    elements.append(Spacer(1, 12))
+                                    print(f"Successfully added chart: {chart_name}")
+                                    chart_found = True
+                                    break
+                                except Exception as img_error:
+                                    print(f"Error loading chart image {alt_path}: {str(img_error)}")
+                                    continue
+                        
+                        if not chart_found:
+                            elements.append(Paragraph(f"[Chart: {os.path.basename(chart_path).replace('.png', '').replace('_', ' ').title()} - Image could not be loaded]", self.styles['CustomBodyText']))
+                            elements.append(Spacer(1, 12))
                         
                 except Exception as e:
                     print(f"Error adding chart {chart_path}: {str(e)}")

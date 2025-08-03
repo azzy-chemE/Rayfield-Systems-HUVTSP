@@ -403,72 +403,84 @@ class EnergyDataAnalyzer:
     def _plot_anomaly_detection(self, output_dir):
         """Plot anomaly detection using statistical methods"""
         if self.target_column is None:
+            print("Warning: No target column for anomaly detection")
             return
             
-        plt.figure(figsize=(12, 8))
-        
-        # Calculate statistics for anomaly detection
-        data = self.df[self.target_column].dropna()
-        mean_val = data.mean()
-        std_val = data.std()
-        
-        # Define anomaly thresholds (2 standard deviations)
-        upper_threshold = mean_val + 2 * std_val
-        lower_threshold = mean_val - 2 * std_val
-        
-        # Plot original data
-        if self.datetime_column:
-            plt.plot(self.df[self.datetime_column], self.df[self.target_column], 
-                    alpha=0.7, label='Original Data', color='blue', linewidth=1)
-        else:
-            plt.plot(self.df[self.target_column].values, alpha=0.7, 
-                    label='Original Data', color='blue', linewidth=1)
-        
-        # Identify and highlight anomalies
-        anomalies = self.df[
-            (self.df[self.target_column] > upper_threshold) | 
-            (self.df[self.target_column] < lower_threshold)
-        ]
-        
-        if len(anomalies) > 0:
+        try:
+            print(f"Generating anomaly detection chart for {self.target_column}")
+            
+            plt.figure(figsize=(12, 8))
+            
+            # Calculate statistics for anomaly detection
+            data = self.df[self.target_column].dropna()
+            mean_val = data.mean()
+            std_val = data.std()
+            
+            # Define anomaly thresholds (2 standard deviations)
+            upper_threshold = mean_val + 2 * std_val
+            lower_threshold = mean_val - 2 * std_val
+            
+            # Plot original data
             if self.datetime_column:
-                plt.scatter(anomalies[self.datetime_column], anomalies[self.target_column], 
-                           color='red', s=50, label=f'Anomalies ({len(anomalies)})', zorder=5)
+                plt.plot(self.df[self.datetime_column], self.df[self.target_column], 
+                        alpha=0.7, label='Original Data', color='blue', linewidth=1)
             else:
-                anomaly_indices = anomalies.index
-                plt.scatter(anomaly_indices, anomalies[self.target_column], 
-                           color='red', s=50, label=f'Anomalies ({len(anomalies)})', zorder=5)
-        
-        # Add threshold lines
-        if self.datetime_column:
-            plt.axhline(y=upper_threshold, color='red', linestyle='--', alpha=0.7, 
-                       label=f'Upper Threshold (+2σ): {upper_threshold:.2f}')
-            plt.axhline(y=lower_threshold, color='red', linestyle='--', alpha=0.7, 
-                       label=f'Lower Threshold (-2σ): {lower_threshold:.2f}')
-        else:
-            plt.axhline(y=upper_threshold, color='red', linestyle='--', alpha=0.7, 
-                       label=f'Upper Threshold (+2σ): {upper_threshold:.2f}')
-            plt.axhline(y=lower_threshold, color='red', linestyle='--', alpha=0.7, 
-                       label=f'Lower Threshold (-2σ): {lower_threshold:.2f}')
-        
-        # Add mean line
-        plt.axhline(y=mean_val, color='green', linestyle='-', alpha=0.8, 
-                   label=f'Mean: {mean_val:.2f}')
-        
-        # Add statistics text box
-        stats_text = f'Anomaly Detection Stats:\nMean: {mean_val:.2f}\nStd: {std_val:.2f}\nAnomalies: {len(anomalies)}\nThreshold: ±2σ'
-        plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes, 
-                verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-        
-        plt.title(f'Anomaly Detection for {self.target_column}')
-        plt.xlabel('Time' if self.datetime_column else 'Data Point')
-        plt.ylabel(self.target_column)
-        plt.legend()
-        if self.datetime_column:
-            plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.savefig(f'{output_dir}/anomaly_detection.png', dpi=300, bbox_inches='tight')
-        plt.close()
+                plt.plot(self.df[self.target_column].values, alpha=0.7, 
+                        label='Original Data', color='blue', linewidth=1)
+            
+            # Identify and highlight anomalies
+            anomalies = self.df[
+                (self.df[self.target_column] > upper_threshold) | 
+                (self.df[self.target_column] < lower_threshold)
+            ]
+            
+            if len(anomalies) > 0:
+                if self.datetime_column:
+                    plt.scatter(anomalies[self.datetime_column], anomalies[self.target_column], 
+                               color='red', s=50, label=f'Anomalies ({len(anomalies)})', zorder=5)
+                else:
+                    anomaly_indices = anomalies.index
+                    plt.scatter(anomaly_indices, anomalies[self.target_column], 
+                               color='red', s=50, label=f'Anomalies ({len(anomalies)})', zorder=5)
+            
+            # Add threshold lines
+            if self.datetime_column:
+                plt.axhline(y=upper_threshold, color='red', linestyle='--', alpha=0.7, 
+                           label=f'Upper Threshold (+2σ): {upper_threshold:.2f}')
+                plt.axhline(y=lower_threshold, color='red', linestyle='--', alpha=0.7, 
+                           label=f'Lower Threshold (-2σ): {lower_threshold:.2f}')
+            else:
+                plt.axhline(y=upper_threshold, color='red', linestyle='--', alpha=0.7, 
+                           label=f'Upper Threshold (+2σ): {upper_threshold:.2f}')
+                plt.axhline(y=lower_threshold, color='red', linestyle='--', alpha=0.7, 
+                           label=f'Lower Threshold (-2σ): {lower_threshold:.2f}')
+            
+            # Add mean line
+            plt.axhline(y=mean_val, color='green', linestyle='-', alpha=0.8, 
+                       label=f'Mean: {mean_val:.2f}')
+            
+            # Add statistics text box
+            stats_text = f'Anomaly Detection Stats:\nMean: {mean_val:.2f}\nStd: {std_val:.2f}\nAnomalies: {len(anomalies)}\nThreshold: ±2σ'
+            plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes, 
+                    verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            
+            plt.title(f'Anomaly Detection for {self.target_column}')
+            plt.xlabel('Time' if self.datetime_column else 'Data Point')
+            plt.ylabel(self.target_column)
+            plt.legend()
+            if self.datetime_column:
+                plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig(f'{output_dir}/anomaly_detection.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            print(f"Successfully generated anomaly detection chart: {output_dir}/anomaly_detection.png")
+            
+        except Exception as e:
+            print(f"Error in _plot_anomaly_detection: {str(e)}")
+            # Create a simple fallback chart
+            self._create_simple_chart(output_dir, 'anomaly_detection', 
+                                   self.df[self.target_column].values if self.target_column else [0], 
+                                   'Anomaly Detection', 'Index', self.target_column or 'Value')
     
     def _plot_correlation_heatmap(self, output_dir):
         """Plot correlation heatmap"""
