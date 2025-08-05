@@ -28,7 +28,7 @@ def qwen_summary(prompt_text):
     }
     
     payload = {
-        "model": "qwen/qwen3-30b-a3b:free",
+        "model": "google/gemini-2.0-flash-exp:free",
         "messages": [
             {
                 "role": "user",
