@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # headless backend
+matplotlib.use('Agg')  # headless backend for Render/servers
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
@@ -305,6 +305,28 @@ class EnergyDataAnalyzer:
 
 
 # ==============================
+# Utility: Clean NaN values for JSON serialization
+# ==============================
+def clean_nan_values(obj):
+    """
+    Recursively replace NaNs in dicts/lists/arrays with None for safe JSON serialization.
+    """
+    if isinstance(obj, dict):
+        return {k: clean_nan_values(v) for k, v in obj.items()}
+
+    elif isinstance(obj, list):
+        return [clean_nan_values(v) for v in obj]
+
+    elif isinstance(obj, np.ndarray):
+        return [clean_nan_values(v) for v in obj.tolist()]
+
+    else:
+        if pd.isna(obj):
+            return None
+        return obj
+
+
+# ==============================
 # Wrapper function
 # ==============================
 def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_mode=False):
@@ -315,7 +337,7 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
             return {'error': 'Failed to load data'}
 
         analyzer.create_rolling_averages()
-        model_results = analyzer.train_linear_regression()
+        analyzer.train_linear_regression()
         stats = analyzer.generate_summary_stats()
 
         try:
@@ -323,12 +345,13 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
         except Exception as plot_error:
             print(f"Warning: Chart generation failed: {str(plot_error)}")
 
-        return {
+        # Clean before returning (fixes Render JSON issues)
+        return clean_nan_values({
             'analysis_results': analyzer.analysis_results,
             'stats': stats,
             'output_dir': output_dir,
             'lightweight_mode': lightweight_mode
-        }
+        })
 
     except MemoryError:
         gc.collect()
