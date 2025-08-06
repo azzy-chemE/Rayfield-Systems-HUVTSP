@@ -125,7 +125,6 @@ def run_ai_analysis():
         
         platform_setup = data.get('platformSetup')
         inspections = data.get('inspections', [])
-        lightweight_mode = data.get('lightweight', False)  # Default to heavyweight mode (full charts)
         
         if not platform_setup:
             return jsonify({'error': 'Platform setup required'}), 400
@@ -133,13 +132,8 @@ def run_ai_analysis():
         if not inspections:
             return jsonify({'error': 'Inspection data required'}), 400
         
-        # Force lightweight mode on Render to prevent timeouts
-        if IS_RENDER and not lightweight_mode:
-            print("Forcing lightweight mode on Render to prevent timeouts")
-            lightweight_mode = True
-        
         # Run the AI summary generator with user data
-        result = run_ai_summary_generator(platform_setup, inspections, lightweight_mode)
+        result = run_ai_summary_generator(platform_setup, inspections)
         
         # Check if we're approaching timeout (30 seconds for Render)
         elapsed_time = time.time() - start_time
@@ -156,7 +150,7 @@ def run_ai_analysis():
                     'csv_stats': result.get('csv_stats', {}),
                     'message': 'AI analysis completed (partial results due to timeout)',
                     'note': 'Request was taking too long, returning partial results',
-                    'lightweight_mode': lightweight_mode,
+
                     'elapsed_time': elapsed_time
                 })
         
@@ -170,7 +164,7 @@ def run_ai_analysis():
                 'csv_stats': result.get('csv_stats', {}),
                 'message': 'AI analysis completed successfully',
                 'note': result.get('note', ''),
-                'lightweight_mode': lightweight_mode,
+
                 'elapsed_time': elapsed_time
             })
         else:
@@ -184,7 +178,7 @@ def run_ai_analysis():
         print(f"Traceback: {traceback.format_exc()}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
-def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False):
+def run_ai_summary_generator(platform_setup, inspections):
     """
     Run the AI summary generator and return results with charts
     """
@@ -211,7 +205,7 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
         
         # Perform data analysis
         print("Starting data analysis...")
-        analysis_results = energy_analysis.analyze_energy_csv(csv_file_path, output_dir='static/charts', lightweight_mode=lightweight_mode)
+        analysis_results = energy_analysis.analyze_energy_csv(csv_file_path, output_dir='static/charts')
         
         # Clean NaN values from the response for JSON compatibility
         def clean_nan_values(obj):
@@ -671,3 +665,4 @@ if __name__ == '__main__':
         threaded=True,  # Use threads instead of processes
         use_reloader=False  # Disable reloader to reduce memory usage
     ) 
+
