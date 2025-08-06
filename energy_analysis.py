@@ -122,11 +122,11 @@ class EnergyDataAnalyzer:
             print(f"Error training model: {str(e)}")
             return False
 
-    def generate_plots(self, output_dir='plots', lightweight_mode=False):
+    def generate_plots(self, output_dir='plots'):
         try:
             os.makedirs(output_dir, exist_ok=True)
 
-            self._plot_regression_results(output_dir, lightweight_mode)
+            self._plot_regression_results(output_dir)
             self._plot_rolling_averages(output_dir)
             self._plot_anomaly_detection(output_dir)
 
@@ -136,7 +136,7 @@ class EnergyDataAnalyzer:
             plt.close('all')
             gc.collect()
 
-    def _plot_regression_results(self, output_dir, lightweight_mode=False):
+    def _plot_regression_results(self, output_dir):
         results = self.analysis_results.get('linear_regression')
         if not results:
             return
@@ -156,16 +156,16 @@ class EnergyDataAnalyzer:
         plt.savefig(f'{output_dir}/regression_results.png', dpi=120, bbox_inches='tight')
         plt.close()
 
-        if not lightweight_mode:
-            residuals = actual - predicted
-            plt.figure(figsize=(8, 6))
-            plt.hist(residuals, bins=30, alpha=0.7, edgecolor='black')
-            plt.title('Residuals Distribution')
-            plt.xlabel('Residual')
-            plt.ylabel('Count')
-            plt.tight_layout()
-            plt.savefig(f'{output_dir}/residuals_histogram.png', dpi=120, bbox_inches='tight')
-            plt.close()
+        # Always generate residuals histogram
+        residuals = actual - predicted
+        plt.figure(figsize=(8, 6))
+        plt.hist(residuals, bins=30, alpha=0.7, edgecolor='black')
+        plt.title('Residuals Distribution')
+        plt.xlabel('Residual')
+        plt.ylabel('Count')
+        plt.tight_layout()
+        plt.savefig(f'{output_dir}/residuals_histogram.png', dpi=120, bbox_inches='tight')
+        plt.close()
 
     def _plot_rolling_averages(self, output_dir):
         rolling_cols = [col for col in self.df.columns if col.startswith('rolling_')]
@@ -284,7 +284,7 @@ def clean_nan_values(obj):
             return None
         return obj
 
-def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_mode=False):
+def analyze_energy_csv(csv_file_path, output_dir='analysis_output'):
     try:
         analyzer = EnergyDataAnalyzer(csv_file_path)
 
@@ -296,20 +296,19 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
         stats = analyzer.generate_summary_stats()
 
         try:
-            analyzer.generate_plots(output_dir, lightweight_mode)
+            analyzer.generate_plots(output_dir)
         except Exception as plot_error:
             print(f"Warning: Chart generation failed: {str(plot_error)}")
 
         return clean_nan_values({
             'analysis_results': analyzer.analysis_results,
             'stats': stats,
-            'output_dir': output_dir,
-            'lightweight_mode': lightweight_mode
+            'output_dir': output_dir
         })
 
     except MemoryError:
         gc.collect()
-        return {'error': 'Memory limit exceeded. Try using lightweight mode.'}
+        return {'error': 'Memory limit exceeded.'}
     except Exception as e:
         return {'error': str(e)}
 
@@ -327,17 +326,16 @@ def analyze_energy_csv_quick(csv_file_path):
         analyzer.train_linear_regression()
         stats = analyzer.generate_summary_stats()
 
-        # Generate charts for quick analysis (always generate charts)
+        # Generate charts for quick analysis
         try:
-            analyzer.generate_plots('static/charts', lightweight_mode=False)
+            analyzer.generate_plots('static/charts')
         except Exception as plot_error:
             print(f"Warning: Chart generation failed: {str(plot_error)}")
 
         return clean_nan_values({
             'analysis_results': analyzer.analysis_results,
             'stats': stats,
-            'output_dir': 'static/charts',
-            'lightweight_mode': False
+            'output_dir': 'static/charts'
         })
 
     except MemoryError:
@@ -355,3 +353,4 @@ if __name__ == "__main__":
         print(f"Results: {results}")
     else:
         print("Usage: python energy_analysis.py <csv_file_path>")
+
