@@ -6,7 +6,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 from dotenv import load_dotenv
-from ai_summary_generator import generate_comprehensive_analysis, generate_summary_from_user_data_only, qwen_summary, generate_weekly_summary, generate_weekly_summary_with_user_data, create_mock_summary_with_csv_analysis
+from ai_summary_generator import qwen_summary, create_mock_summary_with_csv_analysis
 from pdf_generator import generate_pdf_report
 import werkzeug
 
@@ -506,30 +506,7 @@ def run_quick_analysis(platform_setup, inspections):
             'error': f'Quick analysis failed: {str(e)}'
         }
 
-# Debug endpoint to show all routes
-@app.route('/api/debug', methods=['GET'])
-def debug_endpoint():
-    routes = []
-    for rule in app.url_map.iter_rules():
-        routes.append({
-            'endpoint': rule.endpoint,
-            'methods': list(rule.methods),
-            'rule': str(rule)
-        })
-    return jsonify({
-        'status': 'success',
-        'routes': routes,
-        'timestamp': datetime.now().isoformat()
-    })
 
-# Test endpoint
-@app.route('/api/test', methods=['GET'])
-def test_endpoint():
-    return jsonify({
-        'status': 'success',
-        'message': 'Flask server is running',
-        'timestamp': datetime.now().isoformat()
-    })
 
 # API endpoint to get current data status
 @app.route('/api/status', methods=['GET'])

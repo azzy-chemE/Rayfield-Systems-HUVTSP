@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # headless backend for Render/servers
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
@@ -13,25 +13,18 @@ import gc
 import warnings
 warnings.filterwarnings('ignore')
 
-# Global Matplotlib defaults
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.rcParams['font.size'] = 10
 plt.rcParams['figure.dpi'] = 100
 plt.rcParams['figure.figsize'] = (8, 6)
 
-
-# ==============================
-# Helper: Downsample large arrays
-# ==============================
 def downsample_data(x, y=None, max_points=5000):
-    """Downsample data for plotting without losing overall shape."""
     if len(x) > max_points:
         idx = np.linspace(0, len(x) - 1, max_points, dtype=int)
         if y is not None:
             return x[idx], y[idx]
         return x[idx]
     return (x, y) if y is not None else x
-
 
 class EnergyDataAnalyzer:
     def __init__(self, csv_file_path):
@@ -44,37 +37,29 @@ class EnergyDataAnalyzer:
         self.datetime_column = None
         self.analysis_results = {}
 
-    # ==============================
-    # Load & Prepare Data
-    # ==============================
     def load_and_prepare_data(self):
         try:
             self.df = pd.read_csv(self.csv_file_path)
             print(f"Loaded {len(self.df)} rows from {self.csv_file_path}")
 
-            # Convert all numeric columns to float32 for memory efficiency
             numeric_cols = self.df.select_dtypes(include=[np.number]).columns
             self.df[numeric_cols] = self.df[numeric_cols].astype('float32')
 
-            # Auto-detect datetime column
             datetime_candidates = [col for col in self.df.columns
                                    if any(k in col.lower() for k in ['date', 'time', 'datetime', 'timestamp'])]
             if datetime_candidates:
                 self.datetime_column = datetime_candidates[0]
                 self.df[self.datetime_column] = pd.to_datetime(self.df[self.datetime_column])
 
-            # Auto-detect target column
             target_candidates = [col for col in self.df.columns
-                                 if any(k in col.lower() for k in ['power', 'energy', 'output', 'active', 'generated'])]
+                                  if any(k in col.lower() for k in ['power', 'energy', 'output', 'active', 'generated'])]
             if target_candidates:
                 self.target_column = target_candidates[0]
             else:
-                # fallback: use last numeric column
                 numeric_cols = self.df.select_dtypes(include=[np.number]).columns
                 if len(numeric_cols) > 0:
                     self.target_column = numeric_cols[-1]
 
-            # Feature columns = all numeric except target
             self.feature_columns = [col for col in self.df.select_dtypes(include=[np.number]).columns
                                     if col != self.target_column]
 
@@ -84,9 +69,6 @@ class EnergyDataAnalyzer:
             print(f"Error loading data: {str(e)}")
             return False
 
-    # ==============================
-    # Rolling Averages (optimized)
-    # ==============================
     def create_rolling_averages(self, window_sizes=[7, 30]):
         if self.target_column is None:
             return
@@ -101,9 +83,6 @@ class EnergyDataAnalyzer:
             )
             self.feature_columns.append(col_name)
 
-    # ==============================
-    # Train Linear Regression
-    # ==============================
     def train_linear_regression(self, test_size=0.2, random_state=42):
         if not self.feature_columns or self.target_column is None:
             return False
@@ -134,7 +113,6 @@ class EnergyDataAnalyzer:
                 }
             }
 
-            # Explicit cleanup
             del X, y, X_train, X_test, y_train, y_test
             gc.collect()
 
@@ -144,14 +122,10 @@ class EnergyDataAnalyzer:
             print(f"Error training model: {str(e)}")
             return False
 
-    # ==============================
-    # Plot Functions
-    # ==============================
     def generate_plots(self, output_dir='plots', lightweight_mode=False):
         try:
             os.makedirs(output_dir, exist_ok=True)
 
-            # Generate only key plots in lightweight mode
             self._plot_regression_results(output_dir, lightweight_mode)
             self._plot_rolling_averages(output_dir)
             self._plot_anomaly_detection(output_dir)
@@ -170,7 +144,6 @@ class EnergyDataAnalyzer:
         actual = results['predictions']['actual']
         predicted = results['predictions']['predicted']
 
-        # Downsample
         actual_ds, predicted_ds = downsample_data(actual, predicted, max_points=5000)
 
         plt.figure(figsize=(10, 6))
@@ -184,8 +157,8 @@ class EnergyDataAnalyzer:
         plt.close()
 
         if not lightweight_mode:
-            # Residuals Histogram (skip in lightweight mode)
             residuals = actual - predicted
+            plt.figure(figsize=(8, 6))
             plt.hist(residuals, bins=30, alpha=0.7, edgecolor='black')
             plt.title('Residuals Distribution')
             plt.xlabel('Residual')
@@ -200,7 +173,6 @@ class EnergyDataAnalyzer:
         if rolling_cols and self.datetime_column:
             plt.figure(figsize=(12, 6))
 
-            # Downsample time series
             time_ds, value_ds = downsample_data(
                 self.df[self.datetime_column].to_numpy(),
                 self.df[self.target_column].to_numpy()
@@ -263,9 +235,6 @@ class EnergyDataAnalyzer:
         plt.savefig(f'{output_dir}/anomaly_detection.png', dpi=120, bbox_inches='tight')
         plt.close()
 
-    # ==============================
-    # Summary Stats
-    # ==============================
     def generate_summary_stats(self):
         if self.df is None:
             return {}
@@ -303,32 +272,18 @@ class EnergyDataAnalyzer:
 
         return stats
 
-
-# ==============================
-# Utility: Clean NaN values for JSON serialization
-# ==============================
 def clean_nan_values(obj):
-    """
-    Recursively replace NaNs in dicts/lists/arrays with None for safe JSON serialization.
-    """
     if isinstance(obj, dict):
         return {k: clean_nan_values(v) for k, v in obj.items()}
-
     elif isinstance(obj, list):
         return [clean_nan_values(v) for v in obj]
-
     elif isinstance(obj, np.ndarray):
         return [clean_nan_values(v) for v in obj.tolist()]
-
     else:
         if pd.isna(obj):
             return None
         return obj
 
-
-# ==============================
-# Wrapper function
-# ==============================
 def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_mode=False):
     try:
         analyzer = EnergyDataAnalyzer(csv_file_path)
@@ -345,7 +300,6 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
         except Exception as plot_error:
             print(f"Warning: Chart generation failed: {str(plot_error)}")
 
-        # Clean before returning (fixes Render JSON issues)
         return clean_nan_values({
             'analysis_results': analyzer.analysis_results,
             'stats': stats,
@@ -359,8 +313,6 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
     except Exception as e:
         return {'error': str(e)}
 
-
-# CLI entry point
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
