@@ -234,6 +234,15 @@ class EnergyDataAnalyzer:
         plt.tight_layout()
         plt.savefig(f'{output_dir}/anomaly_detection.png', dpi=120, bbox_inches='tight')
         plt.close()
+        
+        # Store anomalies data for later use
+        self.anomalies_data = {
+            'anomalies': anomalies,
+            'upper_threshold': upper_threshold,
+            'lower_threshold': lower_threshold,
+            'mean_val': mean_val,
+            'std_val': std_val
+        }
 
     def generate_summary_stats(self):
         if self.df is None:
@@ -272,6 +281,62 @@ class EnergyDataAnalyzer:
 
         return stats
 
+    def get_anomalies_table(self):
+        """Generate a table of anomalies sorted by x values (increasing)"""
+        if not hasattr(self, 'anomalies_data') or self.anomalies_data['anomalies'].empty:
+            return None
+        
+        anomalies = self.anomalies_data['anomalies']
+        
+        # Create table data
+        table_data = []
+        
+        for idx, row in anomalies.iterrows():
+            # Get x value (timestamp or index)
+            if self.datetime_column:
+                x_value = row[self.datetime_column]
+                x_str = str(x_value)
+            else:
+                x_value = idx
+                x_str = f"Index {idx}"
+            
+            # Get y value (target column value)
+            y_value = row[self.target_column]
+            
+            # Determine if it's above or below threshold
+            if y_value > self.anomalies_data['upper_threshold']:
+                threshold_type = "Above Upper"
+                threshold_value = self.anomalies_data['upper_threshold']
+            else:
+                threshold_type = "Below Lower"
+                threshold_value = self.anomalies_data['lower_threshold']
+            
+            # Calculate deviation from mean
+            deviation = y_value - self.anomalies_data['mean_val']
+            deviation_percent = (deviation / self.anomalies_data['mean_val']) * 100
+            
+            table_data.append({
+                'x_value': x_value,
+                'x_str': x_str,
+                'y_value': float(y_value),
+                'threshold_type': threshold_type,
+                'threshold_value': float(threshold_value),
+                'deviation': float(deviation),
+                'deviation_percent': float(deviation_percent)
+            })
+        
+        # Sort by x_value (increasing)
+        table_data.sort(key=lambda x: x['x_value'])
+        
+        return {
+            'table_data': table_data,
+            'total_anomalies': len(table_data),
+            'upper_threshold': float(self.anomalies_data['upper_threshold']),
+            'lower_threshold': float(self.anomalies_data['lower_threshold']),
+            'mean_value': float(self.anomalies_data['mean_val']),
+            'std_value': float(self.anomalies_data['std_val'])
+        }
+
 def clean_nan_values(obj):
     if isinstance(obj, dict):
         return {k: clean_nan_values(v) for k, v in obj.items()}
@@ -300,10 +365,14 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output'):
         except Exception as plot_error:
             print(f"Warning: Chart generation failed: {str(plot_error)}")
 
+        # Get anomalies table
+        anomalies_table = analyzer.get_anomalies_table()
+
         return clean_nan_values({
             'analysis_results': analyzer.analysis_results,
             'stats': stats,
-            'output_dir': output_dir
+            'output_dir': output_dir,
+            'anomalies_table': anomalies_table
         })
 
     except MemoryError:
@@ -332,10 +401,14 @@ def analyze_energy_csv_quick(csv_file_path):
         except Exception as plot_error:
             print(f"Warning: Chart generation failed: {str(plot_error)}")
 
+        # Get anomalies table
+        anomalies_table = analyzer.get_anomalies_table()
+
         return clean_nan_values({
             'analysis_results': analyzer.analysis_results,
             'stats': stats,
-            'output_dir': 'static/charts'
+            'output_dir': 'static/charts',
+            'anomalies_table': anomalies_table
         })
 
     except MemoryError:

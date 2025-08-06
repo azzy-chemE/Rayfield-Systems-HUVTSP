@@ -54,7 +54,7 @@ class PDFReportGenerator:
             alignment=TA_LEFT
         ))
 
-    def generate_ai_analysis_pdf(self, summary, stats, charts=None, site_name="Energy Site"):
+    def generate_ai_analysis_pdf(self, summary, stats, charts=None, site_name="Energy Site", anomalies_table=None):
         """
         Generate a comprehensive PDF report for AI analysis
         
@@ -63,6 +63,7 @@ class PDFReportGenerator:
             stats (dict): Analysis statistics
             charts (list): List of chart file paths (optional)
             site_name (str): Name of the energy site
+            anomalies_table (dict): Anomalies table data (optional)
             
         Returns:
             str: Base64 encoded PDF data
@@ -100,6 +101,11 @@ class PDFReportGenerator:
             if charts:
                 story.append(PageBreak())
                 story.extend(self._create_charts_section(charts))
+            
+            # Add anomalies table if available
+            if anomalies_table:
+                story.append(PageBreak())
+                story.extend(self._create_anomalies_table_section(anomalies_table))
             
             # Add detailed analysis
             story.append(PageBreak())
@@ -350,7 +356,80 @@ class PDFReportGenerator:
         
         return elements
 
-def generate_pdf_report(summary, stats, charts=None, site_name="Energy Site"):
+    def _create_anomalies_table_section(self, anomalies_table):
+        """Create the anomalies table section"""
+        elements = []
+        
+        # Section header
+        header = Paragraph("Anomalies Analysis", self.styles['SectionHeader'])
+        elements.append(header)
+        elements.append(Spacer(1, 12))
+        
+        # Summary information
+        summary_text = f"""
+        Total anomalies detected: {anomalies_table.get('total_anomalies', 0)}
+        Upper threshold: {anomalies_table.get('upper_threshold', 0):.2f}
+        Lower threshold: {anomalies_table.get('lower_threshold', 0):.2f}
+        Mean value: {anomalies_table.get('mean_value', 0):.2f}
+        Standard deviation: {anomalies_table.get('std_value', 0):.2f}
+        """
+        
+        summary_para = Paragraph(summary_text, self.styles['CustomBodyText'])
+        elements.append(summary_para)
+        elements.append(Spacer(1, 12))
+        
+        # Create anomalies table
+        table_data = anomalies_table.get('table_data', [])
+        if table_data:
+            # Table headers
+            headers = ['Timestamp/Index', 'Value', 'Threshold Type', 'Threshold', 'Deviation', 'Deviation %']
+            table_rows = [headers]
+            
+            # Add data rows (limit to first 50 for readability)
+            for i, anomaly in enumerate(table_data[:50]):
+                row = [
+                    str(anomaly.get('x_str', '')),
+                    f"{anomaly.get('y_value', 0):.2f}",
+                    anomaly.get('threshold_type', ''),
+                    f"{anomaly.get('threshold_value', 0):.2f}",
+                    f"{anomaly.get('deviation', 0):.2f}",
+                    f"{anomaly.get('deviation_percent', 0):.1f}%"
+                ]
+                table_rows.append(row)
+            
+            # Create table
+            table = Table(table_rows, colWidths=[1.5*inch, 0.8*inch, 1.2*inch, 0.8*inch, 0.8*inch, 0.8*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.beige, colors.white]),
+            ]))
+            elements.append(table)
+            
+            # Note if there are more anomalies
+            if len(table_data) > 50:
+                note_text = f"Note: Showing first 50 anomalies out of {len(table_data)} total anomalies."
+                note_para = Paragraph(note_text, self.styles['CustomBodyText'])
+                elements.append(Spacer(1, 6))
+                elements.append(note_para)
+        else:
+            no_anomalies_text = "No anomalies were detected in the data."
+            no_anomalies_para = Paragraph(no_anomalies_text, self.styles['CustomBodyText'])
+            elements.append(no_anomalies_para)
+        
+        return elements
+
+def generate_pdf_report(summary, stats, charts=None, site_name="Energy Site", anomalies_table=None):
     """
     Convenience function to generate PDF report
     
@@ -359,9 +438,10 @@ def generate_pdf_report(summary, stats, charts=None, site_name="Energy Site"):
         stats (dict): Analysis statistics
         charts (list): List of chart file paths (optional)
         site_name (str): Name of the energy site
+        anomalies_table (dict): Anomalies table data (optional)
         
     Returns:
         str: Base64 encoded PDF data
     """
     generator = PDFReportGenerator()
-    return generator.generate_ai_analysis_pdf(summary, stats, charts, site_name) 
+    return generator.generate_ai_analysis_pdf(summary, stats, charts, site_name, anomalies_table) 

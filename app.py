@@ -316,7 +316,8 @@ def run_ai_summary_generator(platform_setup, inspections):
                 'stats': stats,
                 'charts': chart_files,
                 'analysis_results': analysis_results.get('analysis_results', {}),
-                'csv_stats': analysis_results.get('stats', {})
+                'csv_stats': analysis_results.get('stats', {}),
+                'anomalies_table': analysis_results.get('anomalies_table', None)
             }
         else:
             return {
@@ -523,6 +524,7 @@ def run_quick_analysis(platform_setup, inspections):
                 'charts': chart_files,
                 'analysis_results': analysis_results.get('analysis_results', {}),
                 'csv_stats': analysis_results.get('stats', {}),
+                'anomalies_table': analysis_results.get('anomalies_table', None),
                 'mode': 'quick'
             }
         else:
@@ -593,6 +595,7 @@ def generate_pdf_report_endpoint():
         stats = data.get('stats', {})
         charts = data.get('charts', [])
         site_name = data.get('site_name', 'Energy Site')
+        anomalies_table = data.get('anomalies_table', None)
         
         if not summary:
             return jsonify({'error': 'Summary data required'}), 400
@@ -614,13 +617,13 @@ def generate_pdf_report_endpoint():
                 print(f"  {chart_path} -> {clean_path} -> exists: {exists}")
         
         try:
-            pdf_base64 = generate_pdf_report(summary, stats, charts, site_name)
+            pdf_base64 = generate_pdf_report(summary, stats, charts, site_name, anomalies_table)
         except Exception as pdf_error:
             print(f"PDF generation error: {str(pdf_error)}")
             # Try to generate PDF without charts if charts are causing issues
             try:
                 print("Retrying PDF generation without charts...")
-                pdf_base64 = generate_pdf_report(summary, stats, [], site_name)
+                pdf_base64 = generate_pdf_report(summary, stats, [], site_name, anomalies_table)
             except Exception as retry_error:
                 print(f"PDF generation retry failed: {str(retry_error)}")
                 return jsonify({
