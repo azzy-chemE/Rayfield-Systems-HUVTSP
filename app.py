@@ -150,7 +150,6 @@ def run_ai_analysis():
                     'csv_stats': result.get('csv_stats', {}),
                     'message': 'AI analysis completed (partial results due to timeout)',
                     'note': 'Request was taking too long, returning partial results',
-
                     'elapsed_time': elapsed_time
                 })
         
@@ -164,7 +163,6 @@ def run_ai_analysis():
                 'csv_stats': result.get('csv_stats', {}),
                 'message': 'AI analysis completed successfully',
                 'note': result.get('note', ''),
-
                 'elapsed_time': elapsed_time
             })
         else:
@@ -318,8 +316,7 @@ def run_ai_summary_generator(platform_setup, inspections):
                 'stats': stats,
                 'charts': chart_files,
                 'analysis_results': analysis_results.get('analysis_results', {}),
-                'csv_stats': analysis_results.get('stats', {}),
-                'lightweight_mode': lightweight_mode
+                'csv_stats': analysis_results.get('stats', {})
             }
         else:
             return {
@@ -665,4 +662,5 @@ if __name__ == '__main__':
         threaded=True,  # Use threads instead of processes
         use_reloader=False  # Disable reloader to reduce memory usage
     ) 
+
 
