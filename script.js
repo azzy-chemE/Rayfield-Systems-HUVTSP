@@ -156,8 +156,7 @@ if (runAIButton) {
                 },
                 body: JSON.stringify({
                     platformSetup: platformSetup,
-                    inspections: inspections,
-                    lightweight: document.getElementById('lightweight-toggle').checked  // Use UI toggle
+                    inspections: inspections
                 })
             });
             
@@ -267,13 +266,6 @@ if (runAIButton) {
                             </div>
                         </div>
                     `;
-                } else if (result.lightweight_mode) {
-                    resultHtml += `
-                        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                            <h4 style="margin-top: 0; color: #856404;">Lightweight Mode</h4>
-                            <p>Charts were not generated to save memory and processing time. The analysis was performed on your uploaded data.</p>
-                        </div>
-                    `;
                 }
                 
                 // Add CSV analysis results if available
@@ -360,7 +352,7 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
             body: JSON.stringify({
                 platformSetup: platformSetup,
                 inspections: inspections,
-                lightweight: false  // Quick analysis doesn't use lightweight mode
+
             })
         });
         
@@ -604,3 +596,4 @@ function base64ToBlob(base64, mimeType) {
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], { type: mimeType });
 } 
+
