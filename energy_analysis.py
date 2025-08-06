@@ -353,4 +353,3 @@ if __name__ == "__main__":
         print(f"Results: {results}")
     else:
         print("Usage: python energy_analysis.py <csv_file_path>")
-
