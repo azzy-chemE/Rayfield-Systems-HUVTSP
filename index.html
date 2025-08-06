@@ -90,10 +90,20 @@
             <div id="ai-analysis-content">
                 <p>AI will analyze all data, keeping specs of the plant in mind, and determine the current status. A PDF report will be automatically generated and available for download.</p>
                 
-                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                    <button id="run-ai-analysis">🤖 Run AI Analysis</button>
+                <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="lightweight-toggle" style="margin: 0;">
+                        <span>Enable lightweight mode (faster, PDF with charts)</span>
+                    </label>
+                    <small style="color: #666; display: block; margin-top: 0.5rem;">
+                        Lightweight mode generates PDF reports with charts for faster processing. Full mode includes charts in both browser and PDF.
+                    </small>
                 </div>
                 
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <button id="run-ai-analysis">🤖 Run AI Analysis</button>
+                    
+                </div>
                 <div id="ai-result" style="margin-top:1.5rem;"></div>
             </div>
         </section>
