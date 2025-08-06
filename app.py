@@ -28,6 +28,16 @@ IS_RENDER = os.environ.get('RENDER', False) or os.environ.get('PORT', False) or 
 uploaded_csv_data = None
 uploaded_csv_filename = None
 
+def ensure_charts_directory():
+    """Ensure the static/charts directory exists"""
+    try:
+        os.makedirs('static/charts', exist_ok=True)
+        print("Charts directory ensured: static/charts")
+        return True
+    except Exception as e:
+        print(f"Warning: Could not create charts directory: {e}")
+        return False
+
 # Serve static files from root directory
 @app.route('/')
 def index():
@@ -193,12 +203,8 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
                 'error': 'No CSV data available. Please upload a CSV file first.'
             }
         
-        # Create static/charts directory if it doesn't exist (with error handling for Render)
-        try:
-            os.makedirs('static/charts', exist_ok=True)
-        except Exception as e:
-            print(f"Warning: Could not create charts directory: {e}")
-            # Continue without charts directory
+        # Ensure charts directory exists
+        ensure_charts_directory()
         
         # Import energy_analysis here to avoid memory issues
         import energy_analysis
@@ -290,6 +296,16 @@ def run_ai_summary_generator(platform_setup, inspections, lightweight_mode=False
                             print(f"Added chart: {chart_path}")
                 else:
                     print(f"Charts directory does not exist: {charts_dir}")
+                    # Try to find charts in static/charts directory
+                    if os.path.exists('static/charts'):
+                        print("Found static/charts directory, checking for charts...")
+                        files_in_dir = os.listdir('static/charts')
+                        print(f"Files in static/charts directory: {files_in_dir}")
+                        for file in files_in_dir:
+                            if file.endswith('.png'):
+                                chart_path = f'/static/charts/{file}'
+                                chart_files.append(chart_path)
+                                print(f"Added chart from static/charts: {chart_path}")
             except Exception as e:
                 print(f"Warning: Could not access charts directory: {e}")
                 # Continue without charts
@@ -401,10 +417,13 @@ def run_quick_analysis(platform_setup, inspections):
                 'error': 'No CSV data available. Please upload a CSV file first.'
             }
         
+        # Ensure charts directory exists
+        ensure_charts_directory()
+        
         # Import energy_analysis here to avoid memory issues
         import energy_analysis
         
-        # Perform quick data analysis (no charts)
+        # Perform quick data analysis (with charts)
         print("Starting quick data analysis...")
         analysis_results = energy_analysis.analyze_energy_csv_quick(csv_file_path)
         
@@ -472,15 +491,45 @@ def run_quick_analysis(platform_setup, inspections):
         
         print(f"Summary generated: {bool(summary)}")
         
+        # Get chart file paths for quick analysis
+        chart_files = []
+        if 'output_dir' in analysis_results:
+            charts_dir = analysis_results['output_dir']
+            try:
+                if os.path.exists(charts_dir):
+                    print(f"Quick analysis - Charts directory exists: {charts_dir}")
+                    files_in_dir = os.listdir(charts_dir)
+                    print(f"Quick analysis - Files in charts directory: {files_in_dir}")
+                    for file in files_in_dir:
+                        if file.endswith('.png'):
+                            chart_path = f'/static/charts/{file}'
+                            chart_files.append(chart_path)
+                            print(f"Quick analysis - Added chart: {chart_path}")
+                else:
+                    print(f"Quick analysis - Charts directory does not exist: {charts_dir}")
+                    # Try to find charts in static/charts directory
+                    if os.path.exists('static/charts'):
+                        print("Quick analysis - Found static/charts directory, checking for charts...")
+                        files_in_dir = os.listdir('static/charts')
+                        print(f"Quick analysis - Files in static/charts directory: {files_in_dir}")
+                        for file in files_in_dir:
+                            if file.endswith('.png'):
+                                chart_path = f'/static/charts/{file}'
+                                chart_files.append(chart_path)
+                                print(f"Quick analysis - Added chart from static/charts: {chart_path}")
+            except Exception as e:
+                print(f"Quick analysis - Warning: Could not access charts directory: {e}")
+        
         # Clean up memory
         gc.collect()
         
         if summary:
-            print(f"Returning quick analysis results")
+            print(f"Returning quick analysis results with {len(chart_files)} charts")
             return {
                 'success': True,
                 'summary': summary,
                 'stats': stats,
+                'charts': chart_files,
                 'analysis_results': analysis_results.get('analysis_results', {}),
                 'csv_stats': analysis_results.get('stats', {}),
                 'mode': 'quick'
@@ -562,7 +611,16 @@ def generate_pdf_report_endpoint():
         print(f"Summary length: {len(summary) if summary else 0}")
         print(f"Stats keys: {list(stats.keys()) if stats else 'None'}")
         print(f"Charts count: {len(charts) if charts else 0}")
+        print(f"Charts list: {charts}")
         print(f"Site name: {site_name}")
+        
+        # Debug: Check if chart files exist
+        if charts:
+            print("Checking chart file existence:")
+            for chart_path in charts:
+                clean_path = chart_path.replace('/static/charts/', 'static/charts/')
+                exists = os.path.exists(clean_path)
+                print(f"  {chart_path} -> {clean_path} -> exists: {exists}")
         
         try:
             pdf_base64 = generate_pdf_report(summary, stats, charts, site_name)

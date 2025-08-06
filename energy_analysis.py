@@ -313,6 +313,39 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output', lightweight_
     except Exception as e:
         return {'error': str(e)}
 
+def analyze_energy_csv_quick(csv_file_path):
+    """
+    Quick analysis function that generates charts without heavy processing
+    """
+    try:
+        analyzer = EnergyDataAnalyzer(csv_file_path)
+
+        if not analyzer.load_and_prepare_data():
+            return {'error': 'Failed to load data'}
+
+        analyzer.create_rolling_averages()
+        analyzer.train_linear_regression()
+        stats = analyzer.generate_summary_stats()
+
+        # Generate charts for quick analysis (always generate charts)
+        try:
+            analyzer.generate_plots('static/charts', lightweight_mode=False)
+        except Exception as plot_error:
+            print(f"Warning: Chart generation failed: {str(plot_error)}")
+
+        return clean_nan_values({
+            'analysis_results': analyzer.analysis_results,
+            'stats': stats,
+            'output_dir': 'static/charts',
+            'lightweight_mode': False
+        })
+
+    except MemoryError:
+        gc.collect()
+        return {'error': 'Memory limit exceeded during quick analysis.'}
+    except Exception as e:
+        return {'error': str(e)}
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
