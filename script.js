@@ -351,8 +351,7 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
             },
             body: JSON.stringify({
                 platformSetup: platformSetup,
-                inspections: inspections,
-
+                inspections: inspections
             })
         });
         
@@ -596,4 +595,5 @@ function base64ToBlob(base64, mimeType) {
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], { type: mimeType });
 } 
+
 
