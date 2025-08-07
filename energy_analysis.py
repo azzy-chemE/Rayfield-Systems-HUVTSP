@@ -7,7 +7,6 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
-import pickle
 import os
 import gc
 import warnings
@@ -40,7 +39,6 @@ class EnergyDataAnalyzer:
     def load_and_prepare_data(self):
         try:
             self.df = pd.read_csv(self.csv_file_path)
-            print(f"Loaded {len(self.df)} rows from {self.csv_file_path}")
 
             numeric_cols = self.df.select_dtypes(include=[np.number]).columns
             self.df[numeric_cols] = self.df[numeric_cols].astype('float32')
@@ -66,7 +64,6 @@ class EnergyDataAnalyzer:
             return True
 
         except Exception as e:
-            print(f"Error loading data: {str(e)}")
             return False
 
     def create_rolling_averages(self, window_sizes=[7, 30]):
@@ -119,7 +116,6 @@ class EnergyDataAnalyzer:
             return True
 
         except Exception as e:
-            print(f"Error training model: {str(e)}")
             return False
 
     def generate_plots(self, output_dir='plots'):
@@ -131,7 +127,7 @@ class EnergyDataAnalyzer:
             self._plot_anomaly_detection(output_dir)
 
         except Exception as e:
-            print(f"Error generating plots: {str(e)}")
+            pass
         finally:
             plt.close('all')
             gc.collect()
@@ -399,8 +395,8 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output'):
 
         try:
             analyzer.generate_plots(output_dir)
-        except Exception as plot_error:
-            print(f"Warning: Chart generation failed: {str(plot_error)}")
+        except Exception:
+            pass
 
         # Get anomalies table
         print("DEBUG: About to call get_anomalies_table()")
