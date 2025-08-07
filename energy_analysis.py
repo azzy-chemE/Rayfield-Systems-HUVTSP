@@ -196,6 +196,7 @@ class EnergyDataAnalyzer:
 
     def _plot_anomaly_detection(self, output_dir):
         if self.target_column is None:
+            print("DEBUG: No target column found for anomaly detection")
             return
 
         data = self.df[self.target_column].dropna()
@@ -209,6 +210,12 @@ class EnergyDataAnalyzer:
             (self.df[self.target_column] > upper_threshold) |
             (self.df[self.target_column] < lower_threshold)
         ]
+        
+        print(f"DEBUG: Anomaly detection - Mean: {mean_val:.2f}, Std: {std_val:.2f}")
+        print(f"DEBUG: Anomaly detection - Upper threshold: {upper_threshold:.2f}, Lower threshold: {lower_threshold:.2f}")
+        print(f"DEBUG: Anomaly detection - Found {len(anomalies)} anomalies")
+        print(f"DEBUG: Anomaly detection - Data shape: {self.df.shape}")
+        print(f"DEBUG: Anomaly detection - Target column: {self.target_column}")
 
         plt.figure(figsize=(12, 6))
         if self.datetime_column:
@@ -236,6 +243,7 @@ class EnergyDataAnalyzer:
         plt.close()
         
         # Store anomalies data for later use
+        print(f"DEBUG: Storing anomalies data - {len(anomalies)} anomalies found")
         self.anomalies_data = {
             'anomalies': anomalies,
             'upper_threshold': upper_threshold,
@@ -243,6 +251,9 @@ class EnergyDataAnalyzer:
             'mean_val': mean_val,
             'std_val': std_val
         }
+        print(f"DEBUG: Anomalies data stored successfully")
+        print(f"DEBUG: Anomalies data keys: {list(self.anomalies_data.keys())}")
+        print(f"DEBUG: Anomalies DataFrame shape: {self.anomalies_data['anomalies'].shape}")
 
     def generate_summary_stats(self):
         if self.df is None:
@@ -283,10 +294,24 @@ class EnergyDataAnalyzer:
 
     def get_anomalies_table(self):
         """Generate a table of anomalies sorted by x values (increasing)"""
-        if not hasattr(self, 'anomalies_data') or self.anomalies_data['anomalies'].empty:
+        print("DEBUG: get_anomalies_table called")
+        
+        if not hasattr(self, 'anomalies_data'):
+            print("DEBUG: No anomalies_data attribute found")
             return None
         
+        print(f"DEBUG: anomalies_data keys: {list(self.anomalies_data.keys())}")
+        
+        if self.anomalies_data['anomalies'].empty:
+            print("DEBUG: Anomalies DataFrame is empty")
+            return None
+        
+        print(f"DEBUG: Found {len(self.anomalies_data['anomalies'])} anomalies")
+        
         anomalies = self.anomalies_data['anomalies']
+        print(f"DEBUG: Anomalies DataFrame columns: {list(anomalies.columns)}")
+        print(f"DEBUG: Anomalies DataFrame head:")
+        print(anomalies.head())
         
         # Create table data
         table_data = []
@@ -328,7 +353,9 @@ class EnergyDataAnalyzer:
         # Sort by x_value (increasing)
         table_data.sort(key=lambda x: x['x_value'])
         
-        return {
+        print(f"DEBUG: Created {len(table_data)} table entries")
+        
+        result = {
             'table_data': table_data,
             'total_anomalies': len(table_data),
             'upper_threshold': float(self.anomalies_data['upper_threshold']),
@@ -336,6 +363,9 @@ class EnergyDataAnalyzer:
             'mean_value': float(self.anomalies_data['mean_val']),
             'std_value': float(self.anomalies_data['std_val'])
         }
+        
+        print(f"DEBUG: Returning anomalies table with {len(table_data)} anomalies")
+        return result
 
 def clean_nan_values(obj):
     if isinstance(obj, dict):
@@ -344,6 +374,13 @@ def clean_nan_values(obj):
         return [clean_nan_values(v) for v in obj]
     elif isinstance(obj, np.ndarray):
         return [clean_nan_values(v) for v in obj.tolist()]
+    elif hasattr(obj, 'dtype') and hasattr(obj, 'item'):  # numpy/pandas types
+        if pd.isna(obj):
+            return None
+        else:
+            return float(obj) if hasattr(obj, 'item') else obj
+    elif hasattr(obj, 'strftime'):  # Handle datetime/timestamp objects
+        return str(obj)
     else:
         if pd.isna(obj):
             return None
@@ -366,7 +403,14 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output'):
             print(f"Warning: Chart generation failed: {str(plot_error)}")
 
         # Get anomalies table
+        print("DEBUG: About to call get_anomalies_table()")
         anomalies_table = analyzer.get_anomalies_table()
+        print(f"DEBUG: get_anomalies_table() returned: {anomalies_table is not None}")
+        
+        if anomalies_table:
+            print(f"DEBUG: Anomalies table has {anomalies_table.get('total_anomalies', 0)} anomalies")
+        else:
+            print("DEBUG: No anomalies table generated")
 
         return clean_nan_values({
             'analysis_results': analyzer.analysis_results,
@@ -402,7 +446,14 @@ def analyze_energy_csv_quick(csv_file_path):
             print(f"Warning: Chart generation failed: {str(plot_error)}")
 
         # Get anomalies table
+        print("DEBUG: Quick analysis - About to call get_anomalies_table()")
         anomalies_table = analyzer.get_anomalies_table()
+        print(f"DEBUG: Quick analysis - get_anomalies_table() returned: {anomalies_table is not None}")
+        
+        if anomalies_table:
+            print(f"DEBUG: Quick analysis - Anomalies table has {anomalies_table.get('total_anomalies', 0)} anomalies")
+        else:
+            print("DEBUG: Quick analysis - No anomalies table generated")
 
         return clean_nan_values({
             'analysis_results': analyzer.analysis_results,

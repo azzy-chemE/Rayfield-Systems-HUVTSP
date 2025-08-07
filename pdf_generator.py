@@ -104,8 +104,11 @@ class PDFReportGenerator:
             
             # Add anomalies table if available
             if anomalies_table:
+                print(f"PDF Generator: Adding anomalies table with {anomalies_table.get('total_anomalies', 0)} anomalies")
                 story.append(PageBreak())
                 story.extend(self._create_anomalies_table_section(anomalies_table))
+            else:
+                print("PDF Generator: No anomalies table provided")
             
             # Add detailed analysis
             story.append(PageBreak())

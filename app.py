@@ -274,6 +274,18 @@ def run_ai_summary_generator(platform_setup, inspections):
         print(f"Analysis results keys: {list(analysis_results.keys())}")
         print(f"Output dir: {analysis_results.get('output_dir', 'Not found')}")
         
+        # Debug: Check anomalies table
+        anomalies_table = analysis_results.get('anomalies_table')
+        if anomalies_table:
+            print(f"✅ Anomalies table found with {anomalies_table.get('total_anomalies', 0)} anomalies")
+            table_data = anomalies_table.get('table_data', [])
+            if table_data:
+                print(f"First few anomalies:")
+                for i, anomaly in enumerate(table_data[:3]):
+                    print(f"  {i+1}. {anomaly.get('x_str', '')}: {anomaly.get('y_value', 0):.2f}")
+        else:
+            print("❌ No anomalies table found in analysis results")
+        
         if 'output_dir' in analysis_results:
             charts_dir = analysis_results['output_dir']
             try:
@@ -607,6 +619,9 @@ def generate_pdf_report_endpoint():
         print(f"Charts count: {len(charts) if charts else 0}")
         print(f"Charts list: {charts}")
         print(f"Site name: {site_name}")
+        print(f"Anomalies table: {'Present' if anomalies_table else 'Not provided'}")
+        if anomalies_table:
+            print(f"Anomalies table has {anomalies_table.get('total_anomalies', 0)} anomalies")
         
         # Debug: Check if chart files exist
         if charts:

@@ -171,6 +171,7 @@ def create_mock_summary_with_csv_analysis(csv_analysis, platform_setup, inspecti
     # Safely get data with fallbacks
     csv_stats = csv_analysis.get('stats', {}) if csv_analysis else {}
     model_performance = csv_analysis.get('analysis_results', {}).get('linear_regression', {}) if csv_analysis else {}
+    anomalies_table = csv_analysis.get('anomalies_table', {}) if csv_analysis else {}
     
     site_type = platform_setup.get('siteType', 'energy') if platform_setup else 'energy'
     site_specs = platform_setup.get('siteSpecs', 'Standard energy site') if platform_setup else 'Standard energy site'
@@ -207,6 +208,32 @@ def create_mock_summary_with_csv_analysis(csv_analysis, platform_setup, inspecti
     std_str = f"{std_output:.2f}" if isinstance(std_output, (int, float)) else str(std_output)
     r2_str = f"{r2_score:.4f}" if isinstance(r2_score, (int, float)) else str(r2_score)
     
+    # Process anomalies information
+    anomalies_text = ""
+    if anomalies_table and anomalies_table.get('total_anomalies', 0) > 0:
+        total_anomalies = anomalies_table.get('total_anomalies', 0)
+        upper_threshold = anomalies_table.get('upper_threshold', 0)
+        lower_threshold = anomalies_table.get('lower_threshold', 0)
+        mean_value = anomalies_table.get('mean_value', 0)
+        
+        anomalies_text = f"""
+ANOMALIES ANALYSIS:
+- Total anomalies detected: {total_anomalies}
+- Upper threshold: {upper_threshold:.2f}
+- Lower threshold: {lower_threshold:.2f}
+- Mean value: {mean_value:.2f}
+
+The anomalies table provides a detailed list of all detected anomalies, showing timestamps, 
+values, threshold types, and deviation percentages. This information helps identify patterns 
+in anomalous behavior and can guide maintenance decisions.
+"""
+    else:
+        anomalies_text = """
+ANOMALIES ANALYSIS:
+- No anomalies detected in the current dataset
+- System appears to be operating within normal parameters
+"""
+    
     return f"""
 AI Analysis Summary for {site_name}
 
@@ -225,6 +252,8 @@ PERFORMANCE METRICS:
 - Standard deviation: {std_str}
 - Model R² score: {r2_str}
 
+{anomalies_text}
+
 {inspection_text}
 
 INSPECTION ANALYSIS:
@@ -239,14 +268,23 @@ RECOMMENDATIONS:
 3. Address any critical inspection findings immediately
 4. Consider model-based predictions for proactive maintenance
 5. Implement site-specific optimization strategies
+6. Review the anomalies table for any patterns in system behavior
+7. Use anomaly detection insights for predictive maintenance planning
 
 KEY INSIGHTS:
 - System performance analysis completed successfully
 - Model provides good predictive capability (R²: {r2_str})
 - Inspection status provides operational guidance
 - Risk assessment based on both data analysis and inspection findings
+- Anomalies analysis provides additional insights for system monitoring
 
-Note: This analysis combines automated CSV data analysis with inspection findings.
+CHARTS GENERATED:
+- Main data visualization charts (regression_results.png, rolling_averages.png)
+- Anomaly detection chart (anomaly_detection.png)
+- Residuals distribution chart (residuals_histogram.png)
+
+Note: This analysis combines automated CSV data analysis with inspection findings. 
+The anomalies table provides detailed information about system anomalies for better decision-making.
 """
 
 
