@@ -30,7 +30,7 @@ Data Analysis, Linear Regression, and Anomaly Detection Features: These are curr
 ## Team
 - Harvard Undergraduate Ventures-Tech Summer Program
 - Azzy Xiang (Group Founder & Lead Software Engineer)
-- Akash Arun Kumar Soumya (Lead AI Engineer & Software Developer)
+- Akash Arun Kumar Soumya (Lead AI/ML Engineer & Software Developer)
 - Pushkar Kamma (Lead Data Visualizer & Software/Frontend Developer)
 - Tony Sun (Lead Frontend Developer)
 - Luis Cruz Mondragon (Lead Research/Data Manager)
