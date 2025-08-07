@@ -267,3 +267,18 @@ button:active {
     animation: spin 1s linear infinite;
     margin: 0 auto 1rem auto;
 }
+
+/* About Us */
+#about-project p {
+  margin-bottom: 0.75rem;
+}
+
+#about-project ul {
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+#about-project li {
+  margin-bottom: 0.4rem;
+}
