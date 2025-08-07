@@ -59,6 +59,41 @@
                     <span id="saveMessage-setup" class="inline-popup">✓ Saved successfully</span>
                 </div>
             </form>
+			   <section id="about-project" style="margin-top: 2rem;">
+            <h3>About This Project</h3>
+            <p>This platform was designed under the Harvard Undergraduate Ventures-Tech Summer Program (HUVTSP), where we were connected to an internship experience with the startup Rayfield Systems, to automate energy site maintenance through AI-powered inspection analysis and data visualization. It allows energy operators to stay proactive, reduce downtime, and improve long-term system health. Feel free to open <a href="http://tech.seas.harvard.edu/summer/" target="_blank" rel="noopener noreferrer"> HUVTSP's</a> and <a href="https://rayfieldsystems.com/" target="_blank" rel="noopener noreferrer">Rayfield Systems&rsquo;</a> websites.</p>
+            <ul>
+                <li>Upload inspection and specification data in real-time</li>
+                <li>Run AI analysis with one click and get downloadable reports</li>
+                <li>Receive alerts and schedule check-ins automatically</li>
+                <li>Track system status and generate historical summaries</li>
+            </ul>
+			<p><b>Important details:</b></p>
+			<ul>
+				<li>.CSV "date" column must be formatted as such: "1/1/2018  12:00:00 AM"</li>
+				<li> For testing, please use "uploaded_data.csv" from our GitHub repository.</li>
+			</ul>
+			<p><b>Open Source GitHub repository:</b> <a href="https://github.com/azzy-chemE/rayfield-systems-huvtsp" target="_blank" rel="noopener noreferrer">Click here!</a> </p>
+			<p><b>Project developers:</b></p>
+			<ul>
+				<li>Azzy Xiang (Internship Group Founder & Lead Engineer, <a href="https://linkedin.com/in/AzzyX" target="_blank" rel="noopener noreferrer">Connect on LinkedIn</a>)</li>
+				<li>Pushkar Kamma (Full-Stack Software Developer & AI Troubleshooting)</li>
+				<li>Akash Arun Kumar Soumya (Full-Stack Software Developer & AI Management)</li>
+				<li>Tony Sun (Frontend Developer)</li>
+				<li>Luis Cruz Mondragon (Research & Data Management Staff)</li>
+				<li>Anjali Vempati (Frontend/Backend Coordinator)</li>
+			</ul>
+			<p><b>Project implications:</b> This project represents our initial step in developing intelligent, automation-driven tools for the chemical engineering and energy sectors. If possible, we dream of continuing to refine and scale this MVP to support Rayfield Systems in delivering even more efficient, proactive site maintenance and data-driven decision-making. As aspiring engineers and computer scientists, we hope to grow this into a long-term collaboration and earn the opportunity to intern with Rayfield Systems (whether pro-bono or paid), contributing directly to the next generation of energy optimization software.</p>
+			<p>As part of this process, we have mapped out several features that we are capable of engineering for the release candidate (RC) phase of this web tool. Some of these features require more advanced web hosting services and API keys that cost a small price (such as a couple cents per week), which is why we require institutional backing to continue this project for Rayfield Systems.</p>
+				<ul>
+					<li>Adapt the web prototype for permitting, interconnection, or data automation, as needed by Rayfield Systems.</li>
+					<li>Encrypted login page and database for energy maintenance and development teams to ensure privacy & effective data storage</li>
+					<li>Internal dashboard and team access settings to encourage collaboration and discussion on data</li>
+					<li>Automatic data-cleaning software, so that uploaded .CSVs and data do not need to be formatted a certain way for algorithm to execute</li>
+					<li>An adaptable AI and Matplotlib system that can analyze a much wider variety of datasets from several energy sources</li>
+					<li>Upgrading to the paid version of the Render frontend framework we're using to increase processing speed and quality</li>
+				</ul>
+					</section>
         </section>
 	
         <section id="inspection" class="tab-content">
@@ -122,41 +157,6 @@
                 <p>Current plant status, alerts, and scheduled repairs will be shown here.</p>
                 <div id="status-summary"></div>
 		 </section>
-				    <section id="about-project" style="margin-top: 2rem;">
-            <h3>About This Project</h3>
-            <p>This platform was designed under the Harvard Undergraduate Ventures-Tech Summer Program (HUVTSP), where we were connected to an internship experience with the startup Rayfield Systems, to automate energy site maintenance through AI-powered inspection analysis and data visualization. It allows energy operators to stay proactive, reduce downtime, and improve long-term system health. Feel free to open <a href="http://tech.seas.harvard.edu/summer/" target="_blank" rel="noopener noreferrer"> HUVTSP's</a> and <a href="https://rayfieldsystems.com/" target="_blank" rel="noopener noreferrer">Rayfield Systems&rsquo;</a> websites.</p>
-            <ul>
-                <li>Upload inspection and specification data in real-time</li>
-                <li>Run AI analysis with one click and get downloadable reports</li>
-                <li>Receive alerts and schedule check-ins automatically</li>
-                <li>Track system status and generate historical summaries</li>
-            </ul>
-			<p><b>Important details:</b></p>
-			<ul>
-				<li>.CSV "date" column must be formatted as such: "1/1/2018  12:00:00 AM"</li>
-				<li> For testing, please use "uploaded_data.csv" from our GitHub repository.</li>
-			</ul>
-			<p><b>Open Source GitHub repository:</b> <a href="https://github.com/azzy-chemE/rayfield-systems-huvtsp" target="_blank" rel="noopener noreferrer">Click here!</a> </p>
-			<p><b>Project developers:</b></p>
-			<ul>
-				<li>Azzy Xiang (Internship Group Founder & Lead Engineer, <a href="https://linkedin.com/in/AzzyX" target="_blank" rel="noopener noreferrer">Connect on LinkedIn</a>)</li>
-				<li>Pushkar Kamma (Full-Stack Software Developer & AI Troubleshooting)</li>
-				<li>Akash Arun Kumar Soumya (Full-Stack Software Developer & AI Management)</li>
-				<li>Tony Sun (Frontend Developer)</li>
-				<li>Luis Cruz Mondragon (Research & Data Management Staff)</li>
-				<li>Anjali Vempati (Frontend/Backend Coordinator)</li>
-			</ul>
-			<p><b>Project implications:</b> This project represents our initial step in developing intelligent, automation-driven tools for the chemical engineering and energy sectors. If possible, we dream of continuing to refine and scale this MVP to support Rayfield Systems in delivering even more efficient, proactive site maintenance and data-driven decision-making. As aspiring engineers and computer scientists, we hope to grow this into a long-term collaboration and earn the opportunity to intern with Rayfield Systems (whether pro-bono or paid), contributing directly to the next generation of energy optimization software.</p>
-			<p>As part of this process, we have mapped out several features that we are capable of engineering for the release candidate (RC) phase of this web tool. Some of these features require more advanced web hosting services and API keys that cost a small price (such as a couple cents per week), which is why we require institutional backing to continue this project for Rayfield Systems.</p>
-				<ul>
-					<li>Adapt the web prototype for permitting, interconnection, or data automation, as needed by Rayfield Systems.</li>
-					<li>Encrypted login page and database for energy maintenance and development teams to ensure privacy & effective data storage</li>
-					<li>Internal dashboard and team access settings to encourage collaboration and discussion on data</li>
-					<li>Automatic data-cleaning software, so that uploaded .CSVs and data do not need to be formatted a certain way for algorithm to execute</li>
-					<li>An adaptable AI and Matplotlib system that can analyze a much wider variety of datasets from several energy sources</li>
-					<li>Upgrading to the paid version of the Render frontend framework we're using to increase processing speed and quality</li>
-				</ul>
-					</section>
     </main>
     <script src="script.js?v=2"></script>
 </body>
