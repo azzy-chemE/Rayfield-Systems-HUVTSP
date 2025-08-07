@@ -28,7 +28,7 @@ def qwen_summary(prompt_text):
     }
     
     payload = {
-        "model": "google/gemini-2.0-flash-exp:free",
+        "model": "deepseek/deepseek-r1:free",
         "messages": [
             {
                 "role": "user",
