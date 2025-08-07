@@ -532,28 +532,22 @@ function updateStatusTab() {
 }
 
 // Function to download PDF report
-async function downloadPDFReport(analysisResult, platformSetup, event) {
-    let button = null;
-    let originalText = '';
-    
+async function downloadPDFReport(analysisResult, platformSetup) {
     try {
         // Show loading state
-        if (event && event.target) {
-            button = event.target;
-            originalText = button.textContent;
-            button.textContent = '📄 Generating PDF...';
-            button.disabled = true;
-        }
-        
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = '📄 Generating PDF...';
+        button.disabled = true;
+
         // Prepare data for PDF generation
         const pdfData = {
             summary: analysisResult.summary,
             stats: analysisResult.stats,
             charts: analysisResult.charts || [],
-            site_name: platformSetup.siteType || 'Energy Site',
-            anomalies_table: analysisResult.anomalies_table || null
+            site_name: platformSetup.siteType || 'Energy Site'
         };
-        
+
         // Call PDF generation endpoint
         const response = await fetch('/api/generate-pdf-report', {
             method: 'POST',
@@ -562,42 +556,46 @@ async function downloadPDFReport(analysisResult, platformSetup, event) {
             },
             body: JSON.stringify(pdfData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             // Convert base64 to blob and download
             const pdfBlob = base64ToBlob(result.pdf_data, 'application/pdf');
             const url = URL.createObjectURL(pdfBlob);
-            
-            // Create download link
+
+            // Create and trigger download
             const downloadLink = document.createElement('a');
             downloadLink.href = url;
             downloadLink.download = result.filename;
-            downloadLink.style.display = 'none';
-            
-            // Trigger download
             document.body.appendChild(downloadLink);
             downloadLink.click();
             document.body.removeChild(downloadLink);
-            
-            // Clean up
             URL.revokeObjectURL(url);
-            
+
+            // Show alert
             addAlert('PDF Report Downloaded', `Report saved as: ${result.filename}`);
+
+            // ✅ Update button text to show it's downloaded
+            button.textContent = '📄 Downloaded!';
+
+            // ✅ Reset to default after 3 seconds
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+            }, 3000);
         } else {
             alert(`PDF generation failed: ${result.error}`);
-        }
-        
-    } catch (error) {
-        console.error('PDF download error:', error);
-        alert('Failed to generate PDF report. Please try again.');
-    } finally {
-        // Restore button state
-        if (button) {
             button.textContent = originalText;
             button.disabled = false;
         }
+
+    } catch (error) {
+        console.error('PDF download error:', error);
+        alert('Failed to generate PDF report. Please try again.');
+        const button = event.target;
+        button.textContent = '📄 Download PDF';
+        button.disabled = false;
     }
 }
 
