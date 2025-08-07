@@ -88,10 +88,23 @@ def analyze_uploaded_csv(csv_data, filename):
         
         # Analyze the CSV
         results = analyze_energy_csv(temp_file_path, output_dir='temp_analysis')
-        
+
+        # Extract anomaly rows if present
+        anomaly_rows = None
+        if 'stats' in results and 'target_column' in results['stats']:
+            analyzer = EnergyDataAnalyzer(temp_file_path)
+            analyzer.load_and_prepare_data()
+            data = analyzer.df[analyzer.target_column].dropna()
+            mean_val = data.mean()
+            std_val = data.std()
+            upper_threshold = mean_val + 2 * std_val
+            lower_threshold = mean_val - 2 * std_val
+            anomalies = analyzer.df[(analyzer.df[analyzer.target_column] > upper_threshold) | (analyzer.df[analyzer.target_column] < lower_threshold)]
+            anomaly_rows = anomalies.to_dict(orient='records')
+        results['anomaly_rows'] = anomaly_rows if anomaly_rows is not None else []
+
         # Clean up temporary file
         os.unlink(temp_file_path)
-        
         return results
         
     except Exception as e:
@@ -289,7 +302,8 @@ def generate_comprehensive_analysis(csv_data, filename, platform_setup, inspecti
             'critical_inspections': len([i for i in inspections if i.get('status') == 'critical']),
             'concern_inspections': len([i for i in inspections if 'concern' in i.get('status', '')]),
             'normal_inspections': len([i for i in inspections if i.get('status') == 'normal']),
-            'analysis_success': True
+            'analysis_success': True,
+            'anomaly_rows': csv_analysis.get('anomaly_rows', [])
         }
         
         # If API fails, use mock summary
@@ -468,52 +482,6 @@ def generate_weekly_summary(df, site_name="Energy Site"):
                 'notes': f'Data analysis completed for {site_name} with {len(df)} data points'
             })
         
-        # Generate summary using user data only
-        summary, stats = generate_summary_from_user_data_only(platform_setup, inspections, site_name)
-        
-        return summary, stats
-        
-    except Exception as e:
-        print(f"Error in generate_weekly_summary: {str(e)}")
-        return None, {'error': str(e)}
-
-def generate_weekly_summary_with_user_data(platform_setup, inspections, site_name="Energy Site"):
-    """
-    Generate weekly summary with user-provided platform setup and inspections
-    This function is called by app.py
-    """
-    try:
-        # Generate summary using user data only
-        summary, stats = generate_summary_from_user_data_only(platform_setup, inspections, site_name)
-        
-        return summary, stats
-        
-    except Exception as e:
-        print(f"Error in generate_weekly_summary_with_user_data: {str(e)}")
-        return None, {'error': str(e)}
-
-def main():
-    """
-    Main function to run the AI summary generation
-    """
-    print("Rayfield Systems - AI Summary Generator")
-    print("=" * 50)
-    
-    # Check if API key is set
-    if not OPENROUTER_API_KEY:
-        print("ERROR: Please set the OPENROUTER_API_KEY environment variable")
-        print("Get your free API key from: https://openrouter.ai/")
-        print("For local development, create a .env file or set the environment variable")
-        return
-    
-    try:
-        # Load the cleaned data
-        print("Loading wind turbine data...")
-        df = pd.read_csv('cleaned_data.csv')
-        df['Datetime'] = pd.to_datetime(df['Datetime'])
-        
-        print(f"Loaded {len(df)} data points")
-        
         # Generate summary
         print("Generating AI summary...")
         summary, stats = generate_weekly_summary(df, "Wind Site A")
@@ -543,4 +511,4 @@ def main():
         print(f"ERROR: {e}")
 
 if __name__ == "__main__":
-    main() 
+    main()
