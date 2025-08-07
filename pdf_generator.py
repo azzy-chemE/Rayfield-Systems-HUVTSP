@@ -1,7 +1,7 @@
 import os
 import base64
 from datetime import datetime
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -44,17 +44,8 @@ class PDFReportGenerator:
             spaceAfter=6,
             alignment=TA_JUSTIFY
         ))
-        
-        # Stats style
-        self.styles.add(ParagraphStyle(
-            name='StatsText',
-            parent=self.styles['Normal'],
-            fontSize=10,
-            spaceAfter=4,
-            alignment=TA_LEFT
-        ))
 
-    def generate_ai_analysis_pdf(self, summary, stats, charts=None, site_name="Energy Site"):
+    def generate_ai_analysis_pdf(self, summary, stats, charts=None, site_name="Energy Site", anomalies_table=None):
         """
         Generate a comprehensive PDF report for AI analysis
         
@@ -63,6 +54,7 @@ class PDFReportGenerator:
             stats (dict): Analysis statistics
             charts (list): List of chart file paths (optional)
             site_name (str): Name of the energy site
+            anomalies_table (dict): Anomalies table data (optional)
             
         Returns:
             str: Base64 encoded PDF data
@@ -100,6 +92,14 @@ class PDFReportGenerator:
             if charts:
                 story.append(PageBreak())
                 story.extend(self._create_charts_section(charts))
+            
+            # Add anomalies table if available
+            if anomalies_table:
+                print(f"PDF Generator: Adding anomalies table with {anomalies_table.get('total_anomalies', 0)} anomalies")
+                story.append(PageBreak())
+                story.extend(self._create_anomalies_table_section(anomalies_table))
+            else:
+                print("PDF Generator: No anomalies table provided")
             
             # Add detailed analysis
             story.append(PageBreak())
@@ -229,12 +229,6 @@ class PDFReportGenerator:
         elements.append(header)
         elements.append(Spacer(1, 12))
         
-        # Debug: Print chart information
-        print(f"PDF Generator: Received {len(charts) if charts else 0} charts")
-        if charts:
-            for i, chart in enumerate(charts):
-                print(f"Chart {i+1}: {chart}")
-        
         # Add charts
         if charts:
             for chart_path in charts:
@@ -247,64 +241,59 @@ class PDFReportGenerator:
                         # Remove leading slash if present
                         clean_path = chart_path.lstrip('/')
                     
-                    print(f"Processing chart: {clean_path}")
+                    # Try multiple possible paths for the chart
+                    possible_paths = [
+                        clean_path,
+                        f"static/charts/{os.path.basename(clean_path)}",
+                        f"static/charts/{os.path.basename(chart_path)}",
+                        chart_path.lstrip('/'),
+                        os.path.basename(clean_path),
+                        os.path.basename(chart_path)
+                    ]
                     
-                    if os.path.exists(clean_path):
-                        print(f"Chart file exists: {clean_path}")
-                        # Add chart title
-                        chart_name = os.path.basename(clean_path).replace('.png', '').replace('_', ' ').title()
-                        chart_title = Paragraph(f"Chart: {chart_name}", self.styles['CustomBodyText'])
-                        elements.append(chart_title)
-                        elements.append(Spacer(1, 6))
-                        
-                        # Add chart image with better sizing
-                        try:
-                            img = Image(clean_path, width=5*inch, height=3.5*inch, keepAspectRatio=True)
-                            elements.append(img)
-                            elements.append(Spacer(1, 12))
-                            print(f"Successfully added chart: {chart_name}")
-                        except Exception as img_error:
-                            print(f"Error loading chart image {clean_path}: {str(img_error)}")
-                            # Add a placeholder if image fails
-                            elements.append(Paragraph(f"[Chart: {chart_name} - Image could not be loaded]", self.styles['CustomBodyText']))
-                            elements.append(Spacer(1, 12))
-                    else:
-                        print(f"Chart file not found: {clean_path}")
-                        # Try alternative paths
-                        alt_paths = [
-                            clean_path,
-                            f"static/charts/{os.path.basename(clean_path)}",
-                            f"static/charts/{os.path.basename(chart_path)}",
-                            chart_path.lstrip('/')
-                        ]
-                        
-                        chart_found = False
-                        for alt_path in alt_paths:
-                            if os.path.exists(alt_path):
-                                print(f"Found chart at alternative path: {alt_path}")
-                                chart_name = os.path.basename(alt_path).replace('.png', '').replace('_', ' ').title()
-                                chart_title = Paragraph(f"Chart: {chart_name}", self.styles['CustomBodyText'])
-                                elements.append(chart_title)
-                                elements.append(Spacer(1, 6))
-                                
+                    chart_found = False
+                    chart_name = os.path.basename(chart_path).replace('.png', '').replace('_', ' ').title()
+                    
+                    for alt_path in possible_paths:
+                        if os.path.exists(alt_path):
+                            # Add chart title
+                            chart_title = Paragraph(f"Chart: {chart_name}", self.styles['CustomBodyText'])
+                            elements.append(chart_title)
+                            elements.append(Spacer(1, 6))
+                            
+                            # Add chart image with better sizing
+                            try:
+                                # Try with keepAspectRatio first (newer versions)
                                 try:
                                     img = Image(alt_path, width=5*inch, height=3.5*inch, keepAspectRatio=True)
-                                    elements.append(img)
-                                    elements.append(Spacer(1, 12))
-                                    print(f"Successfully added chart: {chart_name}")
-                                    chart_found = True
-                                    break
-                                except Exception as img_error:
-                                    print(f"Error loading chart image {alt_path}: {str(img_error)}")
-                                    continue
+                                except TypeError:
+                                    # Fallback for older versions without keepAspectRatio
+                                    img = Image(alt_path, width=5*inch, height=3.5*inch)
+                                elements.append(img)
+                                elements.append(Spacer(1, 12))
+                                chart_found = True
+                                break
+                            except Exception:
+                                continue
+                    
+                    if not chart_found:
+                        # Add a placeholder if image fails
+                        elements.append(Paragraph(f"[Chart: {chart_name} - Image could not be loaded]", self.styles['CustomBodyText']))
+                        elements.append(Spacer(1, 12))
                         
-                        if not chart_found:
-                            elements.append(Paragraph(f"[Chart: {os.path.basename(chart_path).replace('.png', '').replace('_', ' ').title()} - Image could not be loaded]", self.styles['CustomBodyText']))
-                            elements.append(Spacer(1, 12))
-                        
-                except Exception as e:
-                    print(f"Error adding chart {chart_path}: {str(e)}")
+                except Exception:
                     continue
+            
+            # Add a note if no charts could be loaded
+            if not any(os.path.exists(alt_path) for chart_path in charts for alt_path in [
+                chart_path.replace('/static/charts/', 'static/charts/') if chart_path.startswith('/static/charts/') else chart_path.lstrip('/'),
+                f"static/charts/{os.path.basename(chart_path)}",
+                chart_path.lstrip('/'),
+                os.path.basename(chart_path)
+            ]):
+                no_charts_note = Paragraph("Charts were generated but could not be loaded into the PDF. Please check the chart files in the static/charts directory.", self.styles['CustomBodyText'])
+                elements.append(no_charts_note)
+                elements.append(Spacer(1, 12))
         else:
             # Add a note if no charts are provided
             no_charts_note = Paragraph("No charts available for this analysis.", self.styles['CustomBodyText'])
@@ -350,7 +339,80 @@ class PDFReportGenerator:
         
         return elements
 
-def generate_pdf_report(summary, stats, charts=None, site_name="Energy Site"):
+    def _create_anomalies_table_section(self, anomalies_table):
+        """Create the anomalies table section"""
+        elements = []
+        
+        # Section header
+        header = Paragraph("Anomalies Analysis", self.styles['SectionHeader'])
+        elements.append(header)
+        elements.append(Spacer(1, 12))
+        
+        # Summary information
+        summary_text = f"""
+        Total anomalies detected: {anomalies_table.get('total_anomalies', 0)}
+        Upper threshold: {anomalies_table.get('upper_threshold', 0):.2f}
+        Lower threshold: {anomalies_table.get('lower_threshold', 0):.2f}
+        Mean value: {anomalies_table.get('mean_value', 0):.2f}
+        Standard deviation: {anomalies_table.get('std_value', 0):.2f}
+        """
+        
+        summary_para = Paragraph(summary_text, self.styles['CustomBodyText'])
+        elements.append(summary_para)
+        elements.append(Spacer(1, 12))
+        
+        # Create anomalies table
+        table_data = anomalies_table.get('table_data', [])
+        if table_data:
+            # Table headers
+            headers = ['Timestamp/Index', 'Value', 'Threshold Type', 'Threshold', 'Deviation', 'Deviation %']
+            table_rows = [headers]
+            
+            # Add data rows (limit to first 50 for readability)
+            for anomaly in table_data[:50]:
+                row = [
+                    str(anomaly.get('x_str', '')),
+                    f"{anomaly.get('y_value', 0):.2f}",
+                    anomaly.get('threshold_type', ''),
+                    f"{anomaly.get('threshold_value', 0):.2f}",
+                    f"{anomaly.get('deviation', 0):.2f}",
+                    f"{anomaly.get('deviation_percent', 0):.1f}%"
+                ]
+                table_rows.append(row)
+            
+            # Create table
+            table = Table(table_rows, colWidths=[1.5*inch, 0.8*inch, 1.2*inch, 0.8*inch, 0.8*inch, 0.8*inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.beige, colors.white]),
+            ]))
+            elements.append(table)
+            
+            # Note if there are more anomalies
+            if len(table_data) > 50:
+                note_text = f"Note: Showing first 50 anomalies out of {len(table_data)} total anomalies."
+                note_para = Paragraph(note_text, self.styles['CustomBodyText'])
+                elements.append(Spacer(1, 6))
+                elements.append(note_para)
+        else:
+            no_anomalies_text = "No anomalies were detected in the data."
+            no_anomalies_para = Paragraph(no_anomalies_text, self.styles['CustomBodyText'])
+            elements.append(no_anomalies_para)
+        
+        return elements
+
+def generate_pdf_report(summary, stats, charts=None, site_name="Energy Site", anomalies_table=None):
     """
     Convenience function to generate PDF report
     
@@ -359,9 +421,10 @@ def generate_pdf_report(summary, stats, charts=None, site_name="Energy Site"):
         stats (dict): Analysis statistics
         charts (list): List of chart file paths (optional)
         site_name (str): Name of the energy site
+        anomalies_table (dict): Anomalies table data (optional)
         
     Returns:
         str: Base64 encoded PDF data
     """
     generator = PDFReportGenerator()
-    return generator.generate_ai_analysis_pdf(summary, stats, charts, site_name) 
+    return generator.generate_ai_analysis_pdf(summary, stats, charts, site_name, anomalies_table) 

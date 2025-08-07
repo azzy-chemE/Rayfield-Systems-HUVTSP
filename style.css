@@ -7,16 +7,12 @@ body {
     font-size: 1rem;
 }
 
+/* Header */
 header {
     background: #f8f8f8;
     color: #1a1a1a;
     padding: 1rem 2rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin: 0;
-    border-radius: 0;
-    transition: all 0.3s ease;
-    width: 100%;
-    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -36,35 +32,26 @@ header {
     object-fit: contain;
 }
 
+/* Headings */
 h1, h2, h3 {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     margin: 0 0 0.5rem 0;
-    font-size: 2.62rem;
     font-weight: 600;
     color: #1a1a1a;
 }
 
-h2 {
-    font-size: 1.62rem;
-    font-weight: 600;
-    color: #1a1a1a;
-}
+h1 { font-size: 2.62rem; }
+h2 { font-size: 1.62rem; }
+h3 { font-size: 1rem; }
 
-h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #1a1a1a;
-}
-
+/* Navigation Tabs */
 nav ul.tabs {
     list-style: none;
-    padding: 0;
+    padding: 0.5rem;
     margin: 0;
     display: flex;
     gap: 0.5rem;
     background: #ffffff;
     border-radius: 8px;
-    padding: 0.5rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
@@ -74,12 +61,12 @@ nav ul.tabs li.tab {
     border-radius: 6px;
     background: transparent;
     color: #666;
-    transition: all 0.2s ease;
     font-weight: 500;
-    border: 1px solid transparent;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
 }
 
 .tab-logo {
@@ -95,10 +82,6 @@ nav ul.tabs li.tab:hover {
     color: #333;
 }
 
-nav ul.tabs li.tab:hover .tab-logo {
-    opacity: 1;
-}
-
 nav ul.tabs li.tab.active {
     background: #1a1a1a;
     color: #f8f8f8;
@@ -110,6 +93,7 @@ nav ul.tabs li.tab.active .tab-logo {
     opacity: 1;
 }
 
+/* Main Content */
 main {
     padding: 2rem;
 }
@@ -121,13 +105,8 @@ main {
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     padding: 2rem;
     margin-top: 1rem;
-    color: #1a1a1a;
-    transition: all 0.3s ease;
     border: 1px solid #e0e0e0;
-}
-
-.tab-content:hover {
-    box-shadow: 0 6px 25px rgba(0,0,0,0.12);
+    transition: all 0.3s ease;
 }
 
 .tab-content.active {
@@ -140,14 +119,13 @@ main {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Status Styles */
 .status-normal {
     background: linear-gradient(135deg, #28a745, #20c997);
     color: #fff;
     padding: 0.5rem 1rem;
     border-radius: 20px;
-    display: inline-block;
     font-weight: 500;
-    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
 }
 
 .status-concern {
@@ -155,9 +133,7 @@ main {
     color: #1a1a1a;
     padding: 0.5rem 1rem;
     border-radius: 20px;
-    display: inline-block;
     font-weight: 500;
-    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
 }
 
 .status-critical {
@@ -165,11 +141,10 @@ main {
     color: #fff;
     padding: 0.5rem 1rem;
     border-radius: 20px;
-    display: inline-block;
     font-weight: 500;
-    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
 }
 
+/* Forms */
 form label {
     display: block;
     margin: 1.5rem 0 0.5rem 0;
@@ -186,9 +161,7 @@ form input, form select, form textarea {
     margin-bottom: 1rem;
     font-size: 1rem;
     background: #ffffff;
-    color: #1a1a1a;
     transition: all 0.2s ease;
-    box-sizing: border-box;
 }
 
 form input:focus, form select:focus, form textarea:focus {
@@ -197,6 +170,7 @@ form input:focus, form select:focus, form textarea:focus {
     box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);
 }
 
+/* Buttons */
 button {
     background: linear-gradient(135deg, #1a1a1a, #333333);
     color: #f8f8f8;
@@ -207,26 +181,42 @@ button {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(26, 26, 26, 0.3);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 button:hover {
     background: linear-gradient(135deg, #333333, #555555);
-    box-shadow: 0 4px 8px rgba(26, 26, 26, 0.4);
     transform: translateY(-1px);
 }
 
 button:active {
     transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(26, 26, 26, 0.3);
-} 
+}
 
-.tab-content, p, li, span, div {
+/* Inline Popup (Saved Message) */
+.button-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.inline-popup {
+    display: none;
     font-size: 1rem;
-} 
+    font-weight: 500;
+    color: #28a745;
+    background: rgba(40, 167, 69, 0.1);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+}
 
+.inline-popup.show {
+    display: inline-block;
+}
+
+/* Alerts */
 .alert-card {
     background: #fffbe6;
     border-left: 6px solid #ffc107;
@@ -234,34 +224,35 @@ button:active {
     box-shadow: 0 2px 8px rgba(0,0,0,0.07);
     margin-bottom: 1rem;
     padding: 1rem 1.5rem;
-    min-width: 220px;
-    max-width: 100%;
-    word-break: break-word;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    animation: fadeIn 0.4s;
 }
+
 .alert-title {
     font-size: 1.1rem;
     font-weight: 700;
     color: #b8860b;
 }
+
 .alert-desc {
     font-size: 1rem;
     color: #333;
 }
+
 .alert-time {
     font-size: 0.95rem;
     color: #888;
     align-self: flex-end;
 }
+
 #alerts-list {
     display: flex;
     flex-direction: column;
     gap: 1rem;
 }
 
+/* Loading Spinner */
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -275,62 +266,4 @@ button:active {
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 1rem auto;
-} 
-
-#platform-popup {
-    display: flex;
-    border: 3px;
-    border-color: black;
-    border-style: solid;
-    border-radius: 6px;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    max-width: max-content;
-    margin: auto;
-    background-color: rgb(255, 255, 255);
-    color: black;
-    font-size: 3rem;
-    font-weight: 900;
-    font-family: 'Arial Black',sans-serif;
-}
-
-#inspection-popup {
-    display: flex;
-    border: 3px;
-    border-color: black;
-    border-style: solid;
-    border-radius: 6px;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    max-width: max-content;
-    margin: auto;
-    background-color: rgb(255, 255, 255);
-    color: black;
-    font-size: 3rem;
-    font-weight: 900;
-    font-family: 'Arial Black',sans-serif;
-}
-.button-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 8px;
-}
-
-.inline-popup {
-    display: none;
-    font-size: 1rem;
-    font-weight: 500;
-    font-family: inherit; /* uses same font as body */
-    color: #28a745; /* green text */
-    background: rgba(40, 167, 69, 0.1); /* subtle green background */
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    animation: fadeIn 0.3s ease-in;
-}
-
-.inline-popup.show {
-    display: inline-block;
 }

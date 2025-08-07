@@ -13,15 +13,6 @@ let inspections = [];
 let aiStatus = null;
 let alerts = [];
 
-// Helper functions to get platform setup and inspections
-function getPlatformSetup() {
-    return platformSetup;
-}
-
-function getInspections() {
-    return inspections;
-}
-
 function addAlert(title, description) {
     const now = new Date();
     const alert = {
@@ -115,10 +106,10 @@ if (inspectionForm) {
         };
         inspections.push(inspection);
         const saveMsgInspection = document.getElementById('saveMessage-inspection');
-saveMsgInspection.classList.add('show');
-setTimeout(() => {
-    saveMsgInspection.classList.remove('show');
-}, 2000);
+        saveMsgInspection.classList.add('show');
+        setTimeout(() => {
+            saveMsgInspection.classList.remove('show');
+        }, 2000);
 
         addAlert('Inspection Submitted', `Date: ${inspection.date}<br>Status: ${inspection.status}<br>Notes: ${inspection.notes}`);
     });
@@ -142,13 +133,7 @@ if (runAIButton) {
         aiResult.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p>Running AI Analysis...</p><p style="font-size: 0.9rem; color: #666;">This may take 10-30 seconds for full analysis with charts</p></div>';
         
         try {
-            // Debug: Test server connectivity first
-            console.log('Testing server connectivity...');
-            const testResponse = await fetch('/api/test');
-            console.log('Test response status:', testResponse.status);
-            
             // Call the Flask API
-            console.log('Calling AI analysis endpoint...');
             const response = await fetch('/api/run-ai-analysis', {
                 method: 'POST',
                 headers: {
@@ -156,12 +141,9 @@ if (runAIButton) {
                 },
                 body: JSON.stringify({
                     platformSetup: platformSetup,
-                    inspections: inspections,
-                    lightweight: document.getElementById('lightweight-toggle').checked  // Use UI toggle
+                    inspections: inspections
                 })
             });
-            
-            console.log('AI analysis response status:', response.status);
             
             // Check if response is ok
             if (!response.ok) {
@@ -180,7 +162,6 @@ if (runAIButton) {
             let result;
             try {
                 result = JSON.parse(responseText);
-                console.log('Parsed result:', result);
                 
                 // Validate response structure
                 if (!result || typeof result !== 'object') {
@@ -196,15 +177,10 @@ if (runAIButton) {
                 }
                 
             } catch (parseError) {
-                console.error('Response text:', responseText);
                 throw new Error(`Invalid JSON response: ${parseError.message}`);
             }
             
             if (result.success) {
-                // Debug logging
-                console.log('AI Analysis Result:', result);
-                console.log('Stats object:', result.stats);
-                
                 // Display the AI summary
                 let resultHtml = `
                     <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -267,26 +243,73 @@ if (runAIButton) {
                             </div>
                         </div>
                     `;
-                } else if (result.lightweight_mode) {
-                    resultHtml += `
-                        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                            <h4 style="margin-top: 0; color: #856404;">Lightweight Mode</h4>
-                            <p>Charts were not generated to save memory and processing time. The analysis was performed on your uploaded data.</p>
-                        </div>
-                    `;
                 }
                 
-                // Add CSV analysis results if available
-                if (result.csv_stats) {
+                // Add anomalies table section if available (replacing the duplicate CSV analysis)
+                if (result.anomalies_table && result.anomalies_table.table_data && result.anomalies_table.table_data.length > 0) {
                     resultHtml += `
-                        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                            <h4 style="margin-top: 0; color: #1a1a1a;">CSV Data Analysis</h4>
-                            <ul style="margin: 0; padding-left: 1.5rem;">
-                                <li>Data Points: ${result.csv_stats.data_points || 'N/A'}</li>
-                                <li>Features: ${result.csv_stats.features || 'N/A'}</li>
-                                <li>Target Variable: ${result.csv_stats.target_column || 'N/A'}</li>
-                                <li>Date Range: ${result.csv_stats.date_range ? `${result.csv_stats.date_range.start} to ${result.csv_stats.date_range.end}` : 'N/A'}</li>
-                            </ul>
+                        <div style="background: #fff5f5; padding: 1.5rem; border-radius: 8px; margin-top: 1rem;">
+                            <h3 style="margin-top: 0; color: #1a1a1a;">Anomalies Analysis</h3>
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+                                <h4 style="margin-top: 0; color: #1a1a1a;">Summary</h4>
+                                <ul style="margin: 0; padding-left: 1.5rem;">
+                                    <li><strong>Total Anomalies:</strong> ${result.anomalies_table.total_anomalies}</li>
+                                    <li><strong>Upper Threshold:</strong> ${result.anomalies_table.upper_threshold?.toFixed(2) || 'N/A'}</li>
+                                    <li><strong>Lower Threshold:</strong> ${result.anomalies_table.lower_threshold?.toFixed(2) || 'N/A'}</li>
+                                    <li><strong>Mean Value:</strong> ${result.anomalies_table.mean_value?.toFixed(2) || 'N/A'}</li>
+                                    <li><strong>Standard Deviation:</strong> ${result.anomalies_table.std_value?.toFixed(2) || 'N/A'}</li>
+                                </ul>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 4px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    <thead>
+                                        <tr style="background: #343a40; color: white;">
+                                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Timestamp/Index</th>
+                                            <th style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6;">Value</th>
+                                            <th style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6;">Threshold Type</th>
+                                            <th style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6;">Threshold</th>
+                                            <th style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6;">Deviation</th>
+                                            <th style="padding: 12px; text-align: center; border-bottom: 1px solid #dee2e6;">Deviation %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    // Show first 20 anomalies for web display
+                    const anomaliesToShow = result.anomalies_table.table_data.slice(0, 20);
+                    anomaliesToShow.forEach((anomaly, index) => {
+                        const rowColor = index % 2 === 0 ? '#f8f9fa' : '#ffffff';
+                        resultHtml += `
+                            <tr style="background: ${rowColor};">
+                                <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6; font-size: 0.9rem;">${anomaly.x_str || 'N/A'}</td>
+                                <td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #dee2e6; font-weight: bold;">${anomaly.y_value?.toFixed(2) || 'N/A'}</td>
+                                <td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #dee2e6; color: ${anomaly.threshold_type === 'Above Upper' ? '#dc3545' : '#fd7e14'}; font-weight: bold;">${anomaly.threshold_type || 'N/A'}</td>
+                                <td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #dee2e6;">${anomaly.threshold_value?.toFixed(2) || 'N/A'}</td>
+                                <td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #dee2e6; color: ${anomaly.deviation >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${anomaly.deviation >= 0 ? '+' : ''}${anomaly.deviation?.toFixed(2) || 'N/A'}</td>
+                                <td style="padding: 8px 12px; text-align: center; border-bottom: 1px solid #dee2e6; color: ${anomaly.deviation_percent >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${anomaly.deviation_percent >= 0 ? '+' : ''}${anomaly.deviation_percent?.toFixed(1) || 'N/A'}%</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    resultHtml += `
+                                    </tbody>
+                                </table>
+                            </div>
+                    `;
+                    
+                    // Add note if there are more anomalies
+                    if (result.anomalies_table.table_data.length > 20) {
+                        resultHtml += `
+                            <div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-top: 1rem; border-left: 4px solid #ffc107;">
+                                <p style="margin: 0; color: #856404; font-size: 0.9rem;">
+                                    <strong>Note:</strong> Showing first 20 anomalies out of ${result.anomalies_table.table_data.length} total anomalies. 
+                                    All anomalies will be included in the PDF report.
+                                </p>
+                            </div>
+                        `;
+                    }
+                    
+                    resultHtml += `
                         </div>
                     `;
                 }
@@ -294,6 +317,10 @@ if (runAIButton) {
                 aiResult.innerHTML = resultHtml;
                 aiStatus = 'analysis-complete';
                 addAlert('AI Analysis Complete', 'Comprehensive analysis generated using Qwen AI model');
+
+                if (result.charts && result.charts.length > 0) {
+                    addAlert('Graph Generated Successfully', 'Check graph for anomalies');
+                }
                 
                 // Add PDF download button
                 const pdfButton = document.createElement('button');
@@ -311,7 +338,7 @@ if (runAIButton) {
                     align-items: center;
                     gap: 8px;
                 `;
-                pdfButton.addEventListener('click', () => downloadPDFReport(result, platformSetup));
+                pdfButton.addEventListener('click', (event) => downloadPDFReport(result, platformSetup, event));
                 aiResult.appendChild(pdfButton);
             } else {
                 aiResult.innerHTML = `<span class="status-critical">AI Analysis Failed: ${result.error}</span>`;
@@ -319,8 +346,6 @@ if (runAIButton) {
                 addAlert('AI Analysis Failed', result.error);
             }
         } catch (error) {
-            console.error('Full error details:', error);
-            console.error('Error stack:', error.stack);
             aiResult.innerHTML = `<span class="status-critical">Connection Error: ${error.message}</span>`;
             aiStatus = 'connection-error';
             addAlert('Connection Error', 'Failed to connect to AI analysis service');
@@ -346,8 +371,6 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
             return;
         }
         
-        console.log('Calling quick AI analysis endpoint...');
-        
         const response = await fetch('/api/quick-ai-analysis', {
             method: 'POST',
             headers: {
@@ -355,12 +378,9 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
             },
             body: JSON.stringify({
                 platformSetup: platformSetup,
-                inspections: inspections,
-                lightweight: false  // Quick analysis doesn't use lightweight mode
+                inspections: inspections
             })
         });
-        
-        console.log('Quick AI analysis response status:', response.status);
         
         // Check if response is ok
         if (!response.ok) {
@@ -376,7 +396,6 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
         let result;
         try {
             result = JSON.parse(responseText);
-            console.log('Parsed quick analysis result:', result);
             
             // Validate response structure
             if (!result || typeof result !== 'object') {
@@ -388,7 +407,6 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
             }
             
         } catch (parseError) {
-            console.error('Response text:', responseText);
             throw new Error(`Invalid JSON response: ${parseError.message}`);
         }
         
@@ -457,7 +475,6 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
         }
         
     } catch (error) {
-        console.error('Quick analysis error:', error);
         aiResult.innerHTML = `<span class="status-critical">Connection Error: ${error.message}</span>`;
         aiStatus = 'connection-error';
         addAlert('Connection Error', 'Failed to connect to quick analysis service');
@@ -485,19 +502,6 @@ function updateAlertsTab() {
             <div class="alert-time">${alert.time}</div>
         </div>
     `).join('');
-}
-
-// Test function to check server connectivity
-async function testServerConnection() {
-    try {
-        const response = await fetch('/api/test');
-        const result = await response.json();
-        console.log('Server test result:', result);
-        return result;
-    } catch (error) {
-        console.error('Server test failed:', error);
-        return null;
-    }
 }
 
 function updateStatusTab() {
@@ -535,7 +539,7 @@ async function downloadPDFReport(analysisResult, platformSetup) {
         const originalText = button.textContent;
         button.textContent = '📄 Generating PDF...';
         button.disabled = true;
-        
+
         // Prepare data for PDF generation
         const pdfData = {
             summary: analysisResult.summary,
@@ -543,7 +547,7 @@ async function downloadPDFReport(analysisResult, platformSetup) {
             charts: analysisResult.charts || [],
             site_name: platformSetup.siteType || 'Energy Site'
         };
-        
+
         // Call PDF generation endpoint
         const response = await fetch('/api/generate-pdf-report', {
             method: 'POST',
@@ -552,40 +556,45 @@ async function downloadPDFReport(analysisResult, platformSetup) {
             },
             body: JSON.stringify(pdfData)
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             // Convert base64 to blob and download
             const pdfBlob = base64ToBlob(result.pdf_data, 'application/pdf');
             const url = URL.createObjectURL(pdfBlob);
-            
-            // Create download link
+
+            // Create and trigger download
             const downloadLink = document.createElement('a');
             downloadLink.href = url;
             downloadLink.download = result.filename;
-            downloadLink.style.display = 'none';
-            
-            // Trigger download
             document.body.appendChild(downloadLink);
             downloadLink.click();
             document.body.removeChild(downloadLink);
-            
-            // Clean up
             URL.revokeObjectURL(url);
-            
+
+            // Show alert
             addAlert('PDF Report Downloaded', `Report saved as: ${result.filename}`);
+
+            // ✅ Update button text to show it's downloaded
+            button.textContent = '📄 Downloaded!';
+
+            // ✅ Reset to default after 3 seconds
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+            }, 3000);
         } else {
             alert(`PDF generation failed: ${result.error}`);
+            button.textContent = originalText;
+            button.disabled = false;
         }
-        
+
     } catch (error) {
         console.error('PDF download error:', error);
         alert('Failed to generate PDF report. Please try again.');
-    } finally {
-        // Restore button state
         const button = event.target;
-        button.textContent = originalText;
+        button.textContent = '📄 Download PDF';
         button.disabled = false;
     }
 }
@@ -600,3 +609,5 @@ function base64ToBlob(base64, mimeType) {
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], { type: mimeType });
 } 
+
+
