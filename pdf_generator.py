@@ -1,7 +1,7 @@
 import os
 import base64
 from datetime import datetime
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -43,15 +43,6 @@ class PDFReportGenerator:
             fontSize=11,
             spaceAfter=6,
             alignment=TA_JUSTIFY
-        ))
-        
-        # Stats style
-        self.styles.add(ParagraphStyle(
-            name='StatsText',
-            parent=self.styles['Normal'],
-            fontSize=10,
-            spaceAfter=4,
-            alignment=TA_LEFT
         ))
 
     def generate_ai_analysis_pdf(self, summary, stats, charts=None, site_name="Energy Site", anomalies_table=None):
@@ -235,15 +226,8 @@ class PDFReportGenerator:
         elements.append(header)
         elements.append(Spacer(1, 12))
         
-        # Debug: Print chart information
-        print(f"PDF Generator: Received {len(charts) if charts else 0} charts")
-        if charts:
-            for i, chart in enumerate(charts):
-                print(f"Chart {i+1}: {chart}")
-        
         # Add charts
         if charts:
-            charts_added = 0
             for chart_path in charts:
                 try:
                     # Handle both URL paths and file paths
@@ -253,8 +237,6 @@ class PDFReportGenerator:
                     else:
                         # Remove leading slash if present
                         clean_path = chart_path.lstrip('/')
-                    
-                    print(f"Processing chart: {clean_path}")
                     
                     # Try multiple possible paths for the chart
                     possible_paths = [
@@ -271,7 +253,6 @@ class PDFReportGenerator:
                     
                     for alt_path in possible_paths:
                         if os.path.exists(alt_path):
-                            print(f"Found chart at path: {alt_path}")
                             # Add chart title
                             chart_title = Paragraph(f"Chart: {chart_name}", self.styles['CustomBodyText'])
                             elements.append(chart_title)
@@ -287,27 +268,26 @@ class PDFReportGenerator:
                                     img = Image(alt_path, width=5*inch, height=3.5*inch)
                                 elements.append(img)
                                 elements.append(Spacer(1, 12))
-                                print(f"Successfully added chart: {chart_name}")
                                 chart_found = True
-                                charts_added += 1
                                 break
-                            except Exception as img_error:
-                                print(f"Error loading chart image {alt_path}: {str(img_error)}")
+                            except Exception:
                                 continue
                     
                     if not chart_found:
-                        print(f"Chart file not found for: {chart_path}")
-                        print(f"Tried paths: {possible_paths}")
                         # Add a placeholder if image fails
                         elements.append(Paragraph(f"[Chart: {chart_name} - Image could not be loaded]", self.styles['CustomBodyText']))
                         elements.append(Spacer(1, 12))
                         
-                except Exception as e:
-                    print(f"Error adding chart {chart_path}: {str(e)}")
+                except Exception:
                     continue
             
-            if charts_added == 0:
-                # Add a note if no charts could be loaded
+            # Add a note if no charts could be loaded
+            if not any(os.path.exists(alt_path) for chart_path in charts for alt_path in [
+                chart_path.replace('/static/charts/', 'static/charts/') if chart_path.startswith('/static/charts/') else chart_path.lstrip('/'),
+                f"static/charts/{os.path.basename(chart_path)}",
+                chart_path.lstrip('/'),
+                os.path.basename(chart_path)
+            ]):
                 no_charts_note = Paragraph("Charts were generated but could not be loaded into the PDF. Please check the chart files in the static/charts directory.", self.styles['CustomBodyText'])
                 elements.append(no_charts_note)
                 elements.append(Spacer(1, 12))
@@ -386,7 +366,7 @@ class PDFReportGenerator:
             table_rows = [headers]
             
             # Add data rows (limit to first 50 for readability)
-            for i, anomaly in enumerate(table_data[:50]):
+            for anomaly in table_data[:50]:
                 row = [
                     str(anomaly.get('x_str', '')),
                     f"{anomaly.get('y_value', 0):.2f}",

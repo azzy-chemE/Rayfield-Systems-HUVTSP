@@ -13,15 +13,6 @@ let inspections = [];
 let aiStatus = null;
 let alerts = [];
 
-// Helper functions to get platform setup and inspections
-function getPlatformSetup() {
-    return platformSetup;
-}
-
-function getInspections() {
-    return inspections;
-}
-
 function addAlert(title, description) {
     const now = new Date();
     const alert = {
@@ -115,10 +106,10 @@ if (inspectionForm) {
         };
         inspections.push(inspection);
         const saveMsgInspection = document.getElementById('saveMessage-inspection');
-saveMsgInspection.classList.add('show');
-setTimeout(() => {
-    saveMsgInspection.classList.remove('show');
-}, 2000);
+        saveMsgInspection.classList.add('show');
+        setTimeout(() => {
+            saveMsgInspection.classList.remove('show');
+        }, 2000);
 
         addAlert('Inspection Submitted', `Date: ${inspection.date}<br>Status: ${inspection.status}<br>Notes: ${inspection.notes}`);
     });
@@ -142,13 +133,7 @@ if (runAIButton) {
         aiResult.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p>Running AI Analysis...</p><p style="font-size: 0.9rem; color: #666;">This may take 10-30 seconds for full analysis with charts</p></div>';
         
         try {
-            // Debug: Test server connectivity first
-            console.log('Testing server connectivity...');
-            const testResponse = await fetch('/api/test');
-            console.log('Test response status:', testResponse.status);
-            
             // Call the Flask API
-            console.log('Calling AI analysis endpoint...');
             const response = await fetch('/api/run-ai-analysis', {
                 method: 'POST',
                 headers: {
@@ -159,8 +144,6 @@ if (runAIButton) {
                     inspections: inspections
                 })
             });
-            
-            console.log('AI analysis response status:', response.status);
             
             // Check if response is ok
             if (!response.ok) {
@@ -179,7 +162,6 @@ if (runAIButton) {
             let result;
             try {
                 result = JSON.parse(responseText);
-                console.log('Parsed result:', result);
                 
                 // Validate response structure
                 if (!result || typeof result !== 'object') {
@@ -195,15 +177,10 @@ if (runAIButton) {
                 }
                 
             } catch (parseError) {
-                console.error('Response text:', responseText);
                 throw new Error(`Invalid JSON response: ${parseError.message}`);
             }
             
             if (result.success) {
-                // Debug logging
-                console.log('AI Analysis Result:', result);
-                console.log('Stats object:', result.stats);
-                
                 // Display the AI summary
                 let resultHtml = `
                     <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -268,28 +245,13 @@ if (runAIButton) {
                     `;
                 }
                 
-                // Add CSV analysis results if available
-                if (result.csv_stats) {
-                    resultHtml += `
-                        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                            <h4 style="margin-top: 0; color: #1a1a1a;">CSV Data Analysis</h4>
-                            <ul style="margin: 0; padding-left: 1.5rem;">
-                                <li>Data Points: ${result.csv_stats.data_points || 'N/A'}</li>
-                                <li>Features: ${result.csv_stats.features || 'N/A'}</li>
-                                <li>Target Variable: ${result.csv_stats.target_column || 'N/A'}</li>
-                                <li>Date Range: ${result.csv_stats.date_range ? `${result.csv_stats.date_range.start} to ${result.csv_stats.date_range.end}` : 'N/A'}</li>
-                            </ul>
-                        </div>
-                    `;
-                }
-                
                 aiResult.innerHTML = resultHtml;
                 aiStatus = 'analysis-complete';
                 addAlert('AI Analysis Complete', 'Comprehensive analysis generated using Qwen AI model');
 
-if (result.charts && result.charts.length > 0) {
-    addAlert('Graph Generated Successfully', 'Check graph for anomalies');
-}
+                if (result.charts && result.charts.length > 0) {
+                    addAlert('Graph Generated Successfully', 'Check graph for anomalies');
+                }
                 
                 // Add PDF download button
                 const pdfButton = document.createElement('button');
@@ -315,8 +277,6 @@ if (result.charts && result.charts.length > 0) {
                 addAlert('AI Analysis Failed', result.error);
             }
         } catch (error) {
-            console.error('Full error details:', error);
-            console.error('Error stack:', error.stack);
             aiResult.innerHTML = `<span class="status-critical">Connection Error: ${error.message}</span>`;
             aiStatus = 'connection-error';
             addAlert('Connection Error', 'Failed to connect to AI analysis service');
@@ -342,8 +302,6 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
             return;
         }
         
-        console.log('Calling quick AI analysis endpoint...');
-        
         const response = await fetch('/api/quick-ai-analysis', {
             method: 'POST',
             headers: {
@@ -354,8 +312,6 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
                 inspections: inspections
             })
         });
-        
-        console.log('Quick AI analysis response status:', response.status);
         
         // Check if response is ok
         if (!response.ok) {
@@ -371,7 +327,6 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
         let result;
         try {
             result = JSON.parse(responseText);
-            console.log('Parsed quick analysis result:', result);
             
             // Validate response structure
             if (!result || typeof result !== 'object') {
@@ -383,7 +338,6 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
             }
             
         } catch (parseError) {
-            console.error('Response text:', responseText);
             throw new Error(`Invalid JSON response: ${parseError.message}`);
         }
         
@@ -452,7 +406,6 @@ document.getElementById('quick-ai-analysis').addEventListener('click', async fun
         }
         
     } catch (error) {
-        console.error('Quick analysis error:', error);
         aiResult.innerHTML = `<span class="status-critical">Connection Error: ${error.message}</span>`;
         aiStatus = 'connection-error';
         addAlert('Connection Error', 'Failed to connect to quick analysis service');
@@ -480,19 +433,6 @@ function updateAlertsTab() {
             <div class="alert-time">${alert.time}</div>
         </div>
     `).join('');
-}
-
-// Test function to check server connectivity
-async function testServerConnection() {
-    try {
-        const response = await fetch('/api/test');
-        const result = await response.json();
-        console.log('Server test result:', result);
-        return result;
-    } catch (error) {
-        console.error('Server test failed:', error);
-        return null;
-    }
 }
 
 function updateStatusTab() {

@@ -8,7 +8,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from ai_summary_generator import qwen_summary, create_mock_summary_with_csv_analysis
 from pdf_generator import generate_pdf_report
-import werkzeug
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,11 +32,46 @@ def ensure_charts_directory():
     """Ensure the static/charts directory exists"""
     try:
         os.makedirs('static/charts', exist_ok=True)
-        print("Charts directory ensured: static/charts")
         return True
     except Exception as e:
         print(f"Warning: Could not create charts directory: {e}")
         return False
+
+def get_chart_files(analysis_results):
+    """Get chart file paths from analysis results or static/charts directory"""
+    chart_files = []
+    
+    if 'output_dir' in analysis_results:
+        charts_dir = analysis_results['output_dir']
+        try:
+            if os.path.exists(charts_dir):
+                files_in_dir = os.listdir(charts_dir)
+                for file in files_in_dir:
+                    if file.endswith('.png'):
+                        chart_files.append(f'/static/charts/{file}')
+            elif os.path.exists('static/charts'):
+                files_in_dir = os.listdir('static/charts')
+                for file in files_in_dir:
+                    if file.endswith('.png'):
+                        chart_files.append(f'/static/charts/{file}')
+        except Exception as e:
+            print(f"Warning: Could not access charts directory: {e}")
+    
+    return chart_files
+
+def clean_nan_values(obj):
+    """Clean NaN values from objects for JSON compatibility"""
+    if isinstance(obj, dict):
+        return {k: clean_nan_values(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_nan_values(v) for v in obj]
+    elif hasattr(obj, 'dtype') and hasattr(obj, 'item'):  # numpy/pandas types
+        if pd.isna(obj):
+            return None
+        else:
+            return float(obj) if hasattr(obj, 'item') else obj
+    else:
+        return obj
 
 # Serve static files from root directory
 @app.route('/')
@@ -84,15 +119,9 @@ def upload_csv():
         # Read and validate the CSV file
         try:
             df = pd.read_csv(file)
-            print(f"Uploaded CSV: {file.filename}, Shape: {df.shape}")
-            
-            # Save the uploaded file
             uploaded_csv_filename = file.filename
             uploaded_csv_data = df
-            
-            # Save to a temporary file for analysis
-            temp_filename = 'uploaded_data.csv'
-            df.to_csv(temp_filename, index=False)
+            df.to_csv('uploaded_data.csv', index=False)
             
             return jsonify({
                 'success': True,
@@ -132,26 +161,21 @@ def run_ai_analysis():
         if not inspections:
             return jsonify({'error': 'Inspection data required'}), 400
         
-        # Run the AI summary generator with user data
         result = run_ai_summary_generator(platform_setup, inspections)
-        
-        # Check if we're approaching timeout (30 seconds for Render)
         elapsed_time = time.time() - start_time
-        if IS_RENDER and elapsed_time > 25:
-            print(f"Warning: Request taking too long ({elapsed_time:.2f}s)")
-            # Force return with partial results to prevent timeout
-            if result.get('success'):
-                return jsonify({
-                    'success': True,
-                    'summary': result.get('summary', 'Analysis completed with timeout warning'),
-                    'stats': result.get('stats', {}),
-                    'charts': result.get('charts', []),
-                    'analysis_results': result.get('analysis_results', {}),
-                    'csv_stats': result.get('csv_stats', {}),
-                    'message': 'AI analysis completed (partial results due to timeout)',
-                    'note': 'Request was taking too long, returning partial results',
-                    'elapsed_time': elapsed_time
-                })
+        
+        if IS_RENDER and elapsed_time > 25 and result.get('success'):
+            return jsonify({
+                'success': True,
+                'summary': result.get('summary', 'Analysis completed with timeout warning'),
+                'stats': result.get('stats', {}),
+                'charts': result.get('charts', []),
+                'analysis_results': result.get('analysis_results', {}),
+                'csv_stats': result.get('csv_stats', {}),
+                'message': 'AI analysis completed (partial results due to timeout)',
+                'note': 'Request was taking too long, returning partial results',
+                'elapsed_time': elapsed_time
+            })
         
         if result['success']:
             return jsonify({
@@ -182,47 +206,20 @@ def run_ai_summary_generator(platform_setup, inspections):
     """
     try:
         # Check if we have uploaded CSV data
-        csv_file_path = None
         if uploaded_csv_data is not None and uploaded_csv_filename:
             csv_file_path = 'uploaded_data.csv'
-            print(f"Using uploaded CSV file: {uploaded_csv_filename}")
         elif os.path.exists('cleaned_data.csv'):
             csv_file_path = 'cleaned_data.csv'
-            print("Using fallback cleaned_data.csv")
         else:
             return {
                 'success': False,
                 'error': 'No CSV data available. Please upload a CSV file first.'
             }
         
-        # Ensure charts directory exists
         ensure_charts_directory()
-        
-        # Import energy_analysis here to avoid memory issues
         import energy_analysis
-        
-        # Perform data analysis
-        print("Starting data analysis...")
         analysis_results = energy_analysis.analyze_energy_csv(csv_file_path, output_dir='static/charts')
-        
-        # Clean NaN values from the response for JSON compatibility
-        def clean_nan_values(obj):
-            if isinstance(obj, dict):
-                return {k: clean_nan_values(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [clean_nan_values(v) for v in obj]
-            elif hasattr(obj, 'dtype') and hasattr(obj, 'item'):  # numpy/pandas types
-                if pd.isna(obj):
-                    return None
-                else:
-                    return float(obj) if hasattr(obj, 'item') else obj
-            else:
-                return obj
-        
-        # Clean the analysis results
         analysis_results = clean_nan_values(analysis_results)
-        
-        # Get basic stats
         stats = {
             'data_points': analysis_results.get('stats', {}).get('data_points', 0),
             'features': analysis_results.get('stats', {}).get('features', 0),
@@ -231,11 +228,8 @@ def run_ai_summary_generator(platform_setup, inspections):
             'uploaded_filename': uploaded_csv_filename if uploaded_csv_filename else 'cleaned_data.csv'
         }
         
-        # Generate AI summary
-        print("Generating AI summary...")
         summary = None
         
-        # Construct prompt for AI analysis
         analysis_text = analysis_results.get('analysis_results', '')
         inspection_text = f"Platform Setup: {platform_setup}\nInspections: {inspections}"
         
@@ -260,56 +254,16 @@ def run_ai_summary_generator(platform_setup, inspections):
             print(f"AI API error: {str(e)}")
             summary = None
         
-        # If API fails, use mock summary
         if not summary:
-            print("API failed, using mock summary...")
             summary = create_mock_summary_with_csv_analysis(
                 analysis_results, platform_setup, inspections, "Renewable Energy Site"
             )
-        
-        print(f"Summary generated: {bool(summary)}")
-        
-        # Get chart file paths (always include charts for PDF reports)
-        chart_files = []
-        print(f"Analysis results keys: {list(analysis_results.keys())}")
-        print(f"Output dir: {analysis_results.get('output_dir', 'Not found')}")
-        
-        if 'output_dir' in analysis_results:
-            charts_dir = analysis_results['output_dir']
-            try:
-                if os.path.exists(charts_dir):
-                    print(f"Charts directory exists: {charts_dir}")
-                    files_in_dir = os.listdir(charts_dir)
-                    print(f"Files in charts directory: {files_in_dir}")
-                    for file in files_in_dir:
-                        if file.endswith('.png'):
-                            chart_path = f'/static/charts/{file}'
-                            chart_files.append(chart_path)
-                            print(f"Added chart: {chart_path}")
-                else:
-                    print(f"Charts directory does not exist: {charts_dir}")
-                    # Try to find charts in static/charts directory
-                    if os.path.exists('static/charts'):
-                        print("Found static/charts directory, checking for charts...")
-                        files_in_dir = os.listdir('static/charts')
-                        print(f"Files in static/charts directory: {files_in_dir}")
-                        for file in files_in_dir:
-                            if file.endswith('.png'):
-                                chart_path = f'/static/charts/{file}'
-                                chart_files.append(chart_path)
-                                print(f"Added chart from static/charts: {chart_path}")
-            except Exception as e:
-                print(f"Warning: Could not access charts directory: {e}")
-                # Continue without charts
-        
-        print(f"Total charts found: {len(chart_files)}")
-        print(f"Chart files: {chart_files}")
+        chart_files = get_chart_files(analysis_results)
         
         # Clean up memory
         gc.collect()
         
         if summary:
-            print(f"Returning success with {len(chart_files)} charts")
             return {
                 'success': True,
                 'summary': summary,
@@ -396,47 +350,21 @@ def run_quick_analysis(platform_setup, inspections):
     """
     try:
         # Check if we have uploaded CSV data
-        csv_file_path = None
         if uploaded_csv_data is not None and uploaded_csv_filename:
             csv_file_path = 'uploaded_data.csv'
-            print(f"Using uploaded CSV file: {uploaded_csv_filename}")
         elif os.path.exists('cleaned_data.csv'):
             csv_file_path = 'cleaned_data.csv'
-            print("Using fallback cleaned_data.csv")
         else:
             return {
                 'success': False,
                 'error': 'No CSV data available. Please upload a CSV file first.'
             }
         
-        # Ensure charts directory exists
         ensure_charts_directory()
-        
-        # Import energy_analysis here to avoid memory issues
         import energy_analysis
-        
-        # Perform quick data analysis (with charts)
-        print("Starting quick data analysis...")
         analysis_results = energy_analysis.analyze_energy_csv_quick(csv_file_path)
         
-        # Clean NaN values from the response for JSON compatibility
-        def clean_nan_values(obj):
-            if isinstance(obj, dict):
-                return {k: clean_nan_values(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-                return [clean_nan_values(v) for v in obj]
-            elif hasattr(obj, 'dtype') and hasattr(obj, 'item'):  # numpy/pandas types
-                if pd.isna(obj):
-                    return None
-                else:
-                    return float(obj) if hasattr(obj, 'item') else obj
-            else:
-                return obj
-        
-        # Clean the analysis results
         analysis_results = clean_nan_values(analysis_results)
-        
-        # Get basic stats
         stats = {
             'data_points': analysis_results.get('stats', {}).get('data_points', 0),
             'features': analysis_results.get('stats', {}).get('features', 0),
@@ -445,11 +373,8 @@ def run_quick_analysis(platform_setup, inspections):
             'uploaded_filename': uploaded_csv_filename if uploaded_csv_filename else 'cleaned_data.csv'
         }
         
-        # Generate AI summary
-        print("Generating AI summary...")
         summary = None
         
-        # Construct prompt for AI analysis
         analysis_text = analysis_results.get('analysis_results', '')
         inspection_text = f"Platform Setup: {platform_setup}\nInspections: {inspections}"
         
@@ -474,49 +399,17 @@ def run_quick_analysis(platform_setup, inspections):
             print(f"AI API error: {str(e)}")
             summary = None
         
-        # If API fails, use mock summary
         if not summary:
-            print("API failed, using mock summary...")
             summary = create_mock_summary_with_csv_analysis(
                 analysis_results, platform_setup, inspections, "Renewable Energy Site"
             )
-        
-        print(f"Summary generated: {bool(summary)}")
-        
-        # Get chart file paths for quick analysis
-        chart_files = []
-        if 'output_dir' in analysis_results:
-            charts_dir = analysis_results['output_dir']
-            try:
-                if os.path.exists(charts_dir):
-                    print(f"Quick analysis - Charts directory exists: {charts_dir}")
-                    files_in_dir = os.listdir(charts_dir)
-                    print(f"Quick analysis - Files in charts directory: {files_in_dir}")
-                    for file in files_in_dir:
-                        if file.endswith('.png'):
-                            chart_path = f'/static/charts/{file}'
-                            chart_files.append(chart_path)
-                            print(f"Quick analysis - Added chart: {chart_path}")
-                else:
-                    print(f"Quick analysis - Charts directory does not exist: {charts_dir}")
-                    # Try to find charts in static/charts directory
-                    if os.path.exists('static/charts'):
-                        print("Quick analysis - Found static/charts directory, checking for charts...")
-                        files_in_dir = os.listdir('static/charts')
-                        print(f"Quick analysis - Files in static/charts directory: {files_in_dir}")
-                        for file in files_in_dir:
-                            if file.endswith('.png'):
-                                chart_path = f'/static/charts/{file}'
-                                chart_files.append(chart_path)
-                                print(f"Quick analysis - Added chart from static/charts: {chart_path}")
-            except Exception as e:
-                print(f"Quick analysis - Warning: Could not access charts directory: {e}")
+
+        chart_files = get_chart_files(analysis_results)
         
         # Clean up memory
         gc.collect()
         
         if summary:
-            print(f"Returning quick analysis results with {len(chart_files)} charts")
             return {
                 'success': True,
                 'summary': summary,
@@ -547,8 +440,6 @@ def run_quick_analysis(platform_setup, inspections):
             'success': False,
             'error': f'Quick analysis failed: {str(e)}'
         }
-
-
 
 # API endpoint to get current data status
 @app.route('/api/status', methods=['GET'])
@@ -600,29 +491,13 @@ def generate_pdf_report_endpoint():
         if not summary:
             return jsonify({'error': 'Summary data required'}), 400
         
-        # Generate PDF report
-        print("Generating PDF report...")
-        print(f"Summary length: {len(summary) if summary else 0}")
-        print(f"Stats keys: {list(stats.keys()) if stats else 'None'}")
-        print(f"Charts count: {len(charts) if charts else 0}")
-        print(f"Charts list: {charts}")
-        print(f"Site name: {site_name}")
-        
-        # Debug: Check if chart files exist
-        if charts:
-            print("Checking chart file existence:")
-            for chart_path in charts:
-                clean_path = chart_path.replace('/static/charts/', 'static/charts/')
-                exists = os.path.exists(clean_path)
-                print(f"  {chart_path} -> {clean_path} -> exists: {exists}")
+
         
         try:
             pdf_base64 = generate_pdf_report(summary, stats, charts, site_name, anomalies_table)
         except Exception as pdf_error:
             print(f"PDF generation error: {str(pdf_error)}")
-            # Try to generate PDF without charts if charts are causing issues
             try:
-                print("Retrying PDF generation without charts...")
                 pdf_base64 = generate_pdf_report(summary, stats, [], site_name, anomalies_table)
             except Exception as retry_error:
                 print(f"PDF generation retry failed: {str(retry_error)}")
@@ -632,7 +507,6 @@ def generate_pdf_report_endpoint():
                 }), 500
         
         if pdf_base64:
-            # Create filename with timestamp
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"AI_Analysis_Report_{site_name.replace(' ', '_')}_{timestamp}.pdf"
             
@@ -654,16 +528,11 @@ def generate_pdf_report_endpoint():
         return jsonify({'error': f'PDF generation failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    # Memory-efficient configuration
-    gc.collect()  # Clean up memory before starting
-    
-    # Use threaded mode instead of processes for lower memory usage
+    gc.collect()
     app.run(
         debug=True, 
         host='0.0.0.0', 
         port=int(os.environ.get('PORT', 5000)),
-        threaded=True,  # Use threads instead of processes
-        use_reloader=False  # Disable reloader to reduce memory usage
-    ) 
-
-
+        threaded=True,
+        use_reloader=False
+    )
