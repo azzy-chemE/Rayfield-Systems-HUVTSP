@@ -330,7 +330,8 @@ def generate_comprehensive_analysis(csv_data, filename, platform_setup, inspecti
         # Generate AI summary
         print("Generating AI summary...")
         summary = qwen_summary(prompt)
-        
+        if summary:
+            summary = summary.replace("*","")
         # Prepare comprehensive stats
         stats = {
             'csv_analysis': csv_analysis.get('stats', {}),
