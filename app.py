@@ -269,8 +269,13 @@ def run_ai_summary_generator(platform_setup, inspections):
         # If API fails or returns no summary, use mock summary
         if not summary:
             print("API failed or returned no summary, using mock summary...")
+            # Convert platform_setup string to dict format expected by mock function
+            platform_setup_dict = {
+                'siteType': 'energy',
+                'siteSpecs': platform_setup if isinstance(platform_setup, str) else 'Standard energy site'
+            }
             summary = create_mock_summary_with_csv_analysis(
-                analysis_results, platform_setup, inspections, "Renewable Energy Site"
+                analysis_results, platform_setup_dict, inspections, "Renewable Energy Site"
             )
         
         print(f"Summary generated: {bool(summary)}")
@@ -282,9 +287,14 @@ def run_ai_summary_generator(platform_setup, inspections):
         
         # Debug: Check anomalies table
         anomalies_table = analysis_results.get('anomalies_table')
+        print(f"🔍 Raw anomalies_table type: {type(anomalies_table)}")
+        print(f"🔍 Raw anomalies_table content: {anomalies_table}")
+        
         if anomalies_table:
             print(f"✅ Anomalies table found with {anomalies_table.get('total_anomalies', 0)} anomalies")
             table_data = anomalies_table.get('table_data', [])
+            print(f"🔍 Table data type: {type(table_data)}")
+            print(f"🔍 Table data length: {len(table_data) if table_data else 0}")
             if table_data:
                 print(f"First few anomalies:")
                 for i, anomaly in enumerate(table_data[:3]):
@@ -327,15 +337,25 @@ def run_ai_summary_generator(platform_setup, inspections):
         gc.collect()
         
         if summary:
-            return {
+            final_anomalies_table = analysis_results.get('anomalies_table', None)
+            print(f"🔍 Final anomalies_table being returned: {final_anomalies_table is not None}")
+            if final_anomalies_table:
+                print(f"🔍 Final anomalies count: {final_anomalies_table.get('total_anomalies', 0)}")
+            
+            result = {
                 'success': True,
                 'summary': summary,
                 'stats': stats,
                 'charts': chart_files,
                 'analysis_results': analysis_results.get('analysis_results', {}),
                 'csv_stats': analysis_results.get('stats', {}),
-                'anomalies_table': analysis_results.get('anomalies_table', None)
+                'anomalies_table': final_anomalies_table
             }
+            
+            print(f"🔍 Final result keys: {list(result.keys())}")
+            print(f"🔍 Final result has anomalies_table: {'anomalies_table' in result}")
+            
+            return result
         else:
             return {
                 'success': False,
@@ -464,8 +484,13 @@ def run_quick_analysis(platform_setup, inspections):
             summary = None
         
         if not summary:
+            # Convert platform_setup string to dict format expected by mock function
+            platform_setup_dict = {
+                'siteType': 'energy',
+                'siteSpecs': platform_setup if isinstance(platform_setup, str) else 'Standard energy site'
+            }
             summary = create_mock_summary_with_csv_analysis(
-                analysis_results, platform_setup, inspections, "Renewable Energy Site"
+                analysis_results, platform_setup_dict, inspections, "Renewable Energy Site"
             )
 
         chart_files = get_chart_files(analysis_results)

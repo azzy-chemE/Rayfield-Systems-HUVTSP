@@ -392,9 +392,9 @@ def clean_nan_values(obj):
             return float(obj) if hasattr(obj, 'item') else obj
     elif hasattr(obj, 'strftime'):  # Handle datetime/timestamp objects
         return str(obj)
+    elif pd.isna(obj):
+        return None
     else:
-        if pd.isna(obj):
-            return None
         return obj
 
 def analyze_energy_csv(csv_file_path, output_dir='analysis_output'):
@@ -430,12 +430,24 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output'):
             print(f"Warning: Chart generation failed: {e}")
             print("Anomalies table was still generated successfully")
 
-        return clean_nan_values({
+        result_dict = {
             'analysis_results': analyzer.analysis_results,
             'stats': stats,
             'output_dir': output_dir,
             'anomalies_table': anomalies_table
-        })
+        }
+        
+        print(f"DEBUG: Before clean_nan_values - anomalies_table present: {anomalies_table is not None}")
+        if anomalies_table:
+            print(f"DEBUG: Before clean_nan_values - anomalies count: {anomalies_table.get('total_anomalies', 0)}")
+        
+        cleaned_result = clean_nan_values(result_dict)
+        
+        print(f"DEBUG: After clean_nan_values - anomalies_table present: {cleaned_result.get('anomalies_table') is not None}")
+        if cleaned_result.get('anomalies_table'):
+            print(f"DEBUG: After clean_nan_values - anomalies count: {cleaned_result['anomalies_table'].get('total_anomalies', 0)}")
+        
+        return cleaned_result
 
     except MemoryError:
         gc.collect()
@@ -479,12 +491,24 @@ def analyze_energy_csv_quick(csv_file_path):
             print(f"Warning: Chart generation failed: {str(plot_error)}")
             print("Anomalies table was still generated successfully")
 
-        return clean_nan_values({
+        result_dict = {
             'analysis_results': analyzer.analysis_results,
             'stats': stats,
             'output_dir': 'static/charts',
             'anomalies_table': anomalies_table
-        })
+        }
+        
+        print(f"DEBUG: Quick analysis - Before clean_nan_values - anomalies_table present: {anomalies_table is not None}")
+        if anomalies_table:
+            print(f"DEBUG: Quick analysis - Before clean_nan_values - anomalies count: {anomalies_table.get('total_anomalies', 0)}")
+        
+        cleaned_result = clean_nan_values(result_dict)
+        
+        print(f"DEBUG: Quick analysis - After clean_nan_values - anomalies_table present: {cleaned_result.get('anomalies_table') is not None}")
+        if cleaned_result.get('anomalies_table'):
+            print(f"DEBUG: Quick analysis - After clean_nan_values - anomalies count: {cleaned_result['anomalies_table'].get('total_anomalies', 0)}")
+        
+        return cleaned_result
 
     except MemoryError:
         gc.collect()
