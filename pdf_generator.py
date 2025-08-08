@@ -368,8 +368,8 @@ class PDFReportGenerator:
             headers = ['Timestamp/Index', 'Value', 'Threshold Type', 'Threshold', 'Deviation', 'Deviation %']
             table_rows = [headers]
             
-            # Add data rows (limit to first 50 for readability)
-            for anomaly in table_data[:50]:
+            # Add data rows (show all anomalies)
+            for anomaly in table_data:
                 row = [
                     str(anomaly.get('x_str', '')),
                     f"{anomaly.get('y_value', 0):.2f}",
@@ -399,9 +399,9 @@ class PDFReportGenerator:
             ]))
             elements.append(table)
             
-            # Note if there are more anomalies
-            if len(table_data) > 50:
-                note_text = f"Note: Showing first 50 anomalies out of {len(table_data)} total anomalies."
+            # Note about all anomalies being included
+            if len(table_data) > 0:
+                note_text = f"All {len(table_data)} anomalies are included in this report."
                 note_para = Paragraph(note_text, self.styles['CustomBodyText'])
                 elements.append(Spacer(1, 6))
                 elements.append(note_para)

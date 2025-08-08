@@ -1,12 +1,28 @@
 // Tab switching
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', function () {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-        this.classList.add('active');
-        const target = document.getElementById(this.dataset.tab);
-        if (target) target.classList.add('active');
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function () {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            this.classList.add('active');
+            
+            // Show corresponding content
+            const targetId = this.getAttribute('data-tab');
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.classList.add('active');
+            }
+        });
     });
+    
+    // Show first tab by default
+    const firstTab = document.querySelector('.tab');
+    if (firstTab) {
+        firstTab.click();
+    }
 });
 
 // Data storage (in-memory for demo)

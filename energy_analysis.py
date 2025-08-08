@@ -190,10 +190,11 @@ class EnergyDataAnalyzer:
             plt.savefig(f'{output_dir}/rolling_averages.png', dpi=120, bbox_inches='tight')
             plt.close()
 
-    def _plot_anomaly_detection(self, output_dir):
+    def _generate_anomalies_data(self):
+        """Generate anomalies data independently of chart generation"""
         if self.target_column is None:
             print("DEBUG: No target column found for anomaly detection")
-            return
+            return False
 
         data = self.df[self.target_column].dropna()
         mean_val = data.mean()
@@ -212,6 +213,33 @@ class EnergyDataAnalyzer:
         print(f"DEBUG: Anomaly detection - Found {len(anomalies)} anomalies")
         print(f"DEBUG: Anomaly detection - Data shape: {self.df.shape}")
         print(f"DEBUG: Anomaly detection - Target column: {self.target_column}")
+        
+        # Store anomalies data for later use
+        print(f"DEBUG: Storing anomalies data - {len(anomalies)} anomalies found")
+        self.anomalies_data = {
+            'anomalies': anomalies,
+            'upper_threshold': upper_threshold,
+            'lower_threshold': lower_threshold,
+            'mean_val': mean_val,
+            'std_val': std_val
+        }
+        print(f"DEBUG: Anomalies data stored successfully")
+        print(f"DEBUG: Anomalies data keys: {list(self.anomalies_data.keys())}")
+        print(f"DEBUG: Anomalies DataFrame shape: {self.anomalies_data['anomalies'].shape}")
+        
+        return True
+
+    def _plot_anomaly_detection(self, output_dir):
+        """Generate anomaly detection plot (requires anomalies data to be generated first)"""
+        if not hasattr(self, 'anomalies_data') or self.anomalies_data['anomalies'].empty:
+            print("DEBUG: No anomalies data available for plotting")
+            return
+
+        data = self.df[self.target_column].dropna()
+        anomalies = self.anomalies_data['anomalies']
+        mean_val = self.anomalies_data['mean_val']
+        upper_threshold = self.anomalies_data['upper_threshold']
+        lower_threshold = self.anomalies_data['lower_threshold']
 
         plt.figure(figsize=(12, 6))
         if self.datetime_column:
@@ -237,19 +265,6 @@ class EnergyDataAnalyzer:
         plt.tight_layout()
         plt.savefig(f'{output_dir}/anomaly_detection.png', dpi=120, bbox_inches='tight')
         plt.close()
-        
-        # Store anomalies data for later use
-        print(f"DEBUG: Storing anomalies data - {len(anomalies)} anomalies found")
-        self.anomalies_data = {
-            'anomalies': anomalies,
-            'upper_threshold': upper_threshold,
-            'lower_threshold': lower_threshold,
-            'mean_val': mean_val,
-            'std_val': std_val
-        }
-        print(f"DEBUG: Anomalies data stored successfully")
-        print(f"DEBUG: Anomalies data keys: {list(self.anomalies_data.keys())}")
-        print(f"DEBUG: Anomalies DataFrame shape: {self.anomalies_data['anomalies'].shape}")
 
     def generate_summary_stats(self):
         if self.df is None:
@@ -393,10 +408,10 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output'):
         analyzer.train_linear_regression()
         stats = analyzer.generate_summary_stats()
 
-        try:
-            analyzer.generate_plots(output_dir)
-        except Exception:
-            pass
+        # Generate anomalies data first (independent of charts)
+        print("DEBUG: Generating anomalies data...")
+        anomalies_generated = analyzer._generate_anomalies_data()
+        print(f"DEBUG: Anomalies data generation: {'success' if anomalies_generated else 'failed'}")
 
         # Get anomalies table
         print("DEBUG: About to call get_anomalies_table()")
@@ -407,6 +422,13 @@ def analyze_energy_csv(csv_file_path, output_dir='analysis_output'):
             print(f"DEBUG: Anomalies table has {anomalies_table.get('total_anomalies', 0)} anomalies")
         else:
             print("DEBUG: No anomalies table generated")
+
+        # Generate charts (optional - won't affect anomalies table)
+        try:
+            analyzer.generate_plots(output_dir)
+        except Exception as e:
+            print(f"Warning: Chart generation failed: {e}")
+            print("Anomalies table was still generated successfully")
 
         return clean_nan_values({
             'analysis_results': analyzer.analysis_results,
@@ -435,11 +457,10 @@ def analyze_energy_csv_quick(csv_file_path):
         analyzer.train_linear_regression()
         stats = analyzer.generate_summary_stats()
 
-        # Generate charts for quick analysis
-        try:
-            analyzer.generate_plots('static/charts')
-        except Exception as plot_error:
-            print(f"Warning: Chart generation failed: {str(plot_error)}")
+        # Generate anomalies data first (independent of charts)
+        print("DEBUG: Quick analysis - Generating anomalies data...")
+        anomalies_generated = analyzer._generate_anomalies_data()
+        print(f"DEBUG: Quick analysis - Anomalies data generation: {'success' if anomalies_generated else 'failed'}")
 
         # Get anomalies table
         print("DEBUG: Quick analysis - About to call get_anomalies_table()")
@@ -450,6 +471,13 @@ def analyze_energy_csv_quick(csv_file_path):
             print(f"DEBUG: Quick analysis - Anomalies table has {anomalies_table.get('total_anomalies', 0)} anomalies")
         else:
             print("DEBUG: Quick analysis - No anomalies table generated")
+
+        # Generate charts for quick analysis (optional)
+        try:
+            analyzer.generate_plots('static/charts')
+        except Exception as plot_error:
+            print(f"Warning: Chart generation failed: {str(plot_error)}")
+            print("Anomalies table was still generated successfully")
 
         return clean_nan_values({
             'analysis_results': analyzer.analysis_results,
