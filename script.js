@@ -143,6 +143,12 @@ if (runAIButton) {
             document.getElementById('ai-result').innerHTML = '<span class="status-critical">Please complete platform setup first.</span>';
             return;
         }
+        
+        // Check if CSV data is available
+        if (!platformSetup.csvData) {
+            document.getElementById('ai-result').innerHTML = '<span class="status-critical">Please upload a CSV file first in the Platform Setup tab.</span>';
+            return;
+        }
         if (inspections.length === 0) {
             document.getElementById('ai-result').innerHTML = '<span class="status-critical">Please insert inspection data first.</span>';
             return;
@@ -365,9 +371,24 @@ if (runAIButton) {
                 addAlert('AI Analysis Failed', result.error);
             }
         } catch (error) {
-            aiResult.innerHTML = `<span class="status-critical">Connection Error: ${error.message}</span>`;
+            let errorMessage = error.message;
+            let errorTitle = 'Connection Error';
+            
+            // Handle specific error cases
+            if (error.message.includes('CSV data')) {
+                errorMessage = 'Please upload a CSV file first before running analysis.';
+                errorTitle = 'Missing Data';
+            } else if (error.message.includes('HTTP 500')) {
+                errorMessage = 'Server error occurred. Please try again later.';
+                errorTitle = 'Server Error';
+            } else if (error.message.includes('HTTP 400')) {
+                errorMessage = error.message.replace('HTTP 400: ', '');
+                errorTitle = 'Request Error';
+            }
+            
+            aiResult.innerHTML = `<span class="status-critical">${errorTitle}: ${errorMessage}</span>`;
             aiStatus = 'connection-error';
-            addAlert('Connection Error', 'Failed to connect to AI analysis service');
+            addAlert(errorTitle, errorMessage);
         }
 
         updateStatusTab();
@@ -383,6 +404,12 @@ if (quickAIButton) {
         try {
             if (!platformSetup) {
                 aiResult.innerHTML = '<span class="status-critical">Please complete platform setup first.</span>';
+                return;
+            }
+            
+            // Check if CSV data is available
+            if (!platformSetup.csvData) {
+                aiResult.innerHTML = '<span class="status-critical">Please upload a CSV file first in the Platform Setup tab.</span>';
                 return;
             }
             if (inspections.length === 0) {
@@ -449,9 +476,24 @@ if (quickAIButton) {
                 addAlert('Quick Analysis Failed', result.error);
             }
         } catch (error) {
-            aiResult.innerHTML = `<span class="status-critical">Connection Error: ${error.message}</span>`;
+            let errorMessage = error.message;
+            let errorTitle = 'Connection Error';
+            
+            // Handle specific error cases
+            if (error.message.includes('CSV data')) {
+                errorMessage = 'Please upload a CSV file first before running analysis.';
+                errorTitle = 'Missing Data';
+            } else if (error.message.includes('HTTP 500')) {
+                errorMessage = 'Server error occurred. Please try again later.';
+                errorTitle = 'Server Error';
+            } else if (error.message.includes('HTTP 400')) {
+                errorMessage = error.message.replace('HTTP 400: ', '');
+                errorTitle = 'Request Error';
+            }
+            
+            aiResult.innerHTML = `<span class="status-critical">${errorTitle}: ${errorMessage}</span>`;
             aiStatus = 'connection-error';
-            addAlert('Connection Error', 'Failed to connect to quick analysis service');
+            addAlert(errorTitle, errorMessage);
         }
         updateStatusTab();
     });

@@ -200,10 +200,13 @@ def run_ai_analysis():
                 'elapsed_time': elapsed_time
             })
         else:
+            error_msg = result.get('error', 'Unknown error')
+            # Return 400 for user errors (like missing CSV), 500 for server errors
+            status_code = 400 if 'CSV data' in error_msg else 500
             return jsonify({
                 'success': False,
-                'error': result.get('error', 'Unknown error')
-            }), 500
+                'error': error_msg
+            }), status_code
 
     except Exception as e:
         print(f"Error in run_ai_analysis: {str(e)}")
@@ -418,10 +421,13 @@ def quick_ai_analysis():
                 'mode': 'quick'
             })
         else:
+            error_msg = result.get('error', 'Unknown error')
+            # Return 400 for user errors (like missing CSV), 500 for server errors
+            status_code = 400 if 'CSV data' in error_msg else 500
             return jsonify({
                 'success': False,
-                'error': result['error']
-            }), 500
+                'error': error_msg
+            }), status_code
             
     except Exception as e:
         print(f"Error in quick_ai_analysis: {str(e)}")
