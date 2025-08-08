@@ -331,7 +331,10 @@ def generate_comprehensive_analysis(csv_data, filename, platform_setup, inspecti
         print("Generating AI summary...")
         summary = qwen_summary(prompt)
         if summary:
-            summary = summary.replace("*","")
+            import re
+            summary = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', summary)  # remove markdown bold/italic
+            summary = re.sub(r'^\s*#+\s*', '', summary, flags=re.MULTILINE)  # remove markdown headers
+            summary = summary.strip()
         # Prepare comprehensive stats
         stats = {
             'csv_analysis': csv_analysis.get('stats', {}),
