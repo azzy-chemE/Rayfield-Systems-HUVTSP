@@ -1,10 +1,13 @@
 # Rayfield Systems: Maintenance Automation
+
 A comprehensive maintenance automation platform for energy plants, process managers, maintenance teams, and chemical engineers, with AI-powered analysis and trend reports.
 
 ## Quick Start
+
 Open your browser and go to 'https://rayfield-systems-huvtsp.onrender.com'
 
 ## How to Use
+
 - **Setup Platform**: Configure your energy site type and specifications
 - **Add Inspections**: Log maintenance inspections with dates, notes, and status
 - **Run AI Analysis:** Get comprehensive AI-powered analysis based on your inputs. Metrics are AI determined based on site type, summarized at bottom under AI analysis
@@ -38,13 +41,13 @@ This platform was designed under the Harvard Undergraduate Ventures-Tech Summer 
 - **Data**: Pandas, scikit-learn, matplotlib
 - **Deployment**: Render
 
-# Important details
+## Important details
 
 - .CSV "date" column must be formatted as such: "1/1/2018 12:00:00 AM"
 - For testing, please use "uploaded_data.csv" from our GitHub repository.
 - Open Source
 
-# Project implications
+## Project implications
 
 This project represents our initial step in developing intelligent, automation-driven tools for the chemical engineering and energy sectors. If possible, we dream of continuing to refine and scale this MVP to support Rayfield Systems in delivering even more efficient, proactive site maintenance and data-driven decision-making. As aspiring engineers and computer scientists, we hope to grow this into a long-term collaboration and earn the opportunity to intern with Rayfield Systems (whether pro-bono or paid), contributing directly to the next generation of energy optimization software.
 
