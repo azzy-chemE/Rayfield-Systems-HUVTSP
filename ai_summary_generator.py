@@ -16,17 +16,28 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 def _clean_markdown(text: str) -> str:
-    """Remove markdown noise like **bold**, *italic*, headers (#) and leading bullets."""
+    """Remove markdown noise like **bold**, *italic*, headers (#), bullets, backticks, and numbered lists."""
+    import re
     if not text:
         return text
     text = text.replace('\r\n', '\n')
-    # Remove **bold** / *italic* wrappers (keep inner text)
+
+    # Remove backticks `inline code`
+    text = re.sub(r'`([^`\n]+)`', r'\1', text)
+
+    # Remove **bold** / *italic* / ***bold-italic***
     text = re.sub(r'\*{1,3}([^*\n][^*]*?)\*{1,3}', r'\1', text)
-    # Remove Markdown headers (#, ##, ###) at start of lines
+
+    # Remove Markdown headers (#, ##, ###)
     text = re.sub(r'^\s{0,3}#{1,6}\s*', '', text, flags=re.MULTILINE)
-    # Remove leading bullet markers like "*   " or "- "
+
+    # Remove bullet markers (*, -, •)
     text = re.sub(r'^\s*[\*\-•]\s+', '', text, flags=re.MULTILINE)
-    # Collapse too many blank lines
+
+    # Remove numbered list markers like "1. ", "2. "
+    text = re.sub(r'^\s*\d+\.\s+', '', text, flags=re.MULTILINE)
+
+    # Collapse multiple blank lines
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
