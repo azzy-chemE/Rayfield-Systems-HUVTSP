@@ -6,7 +6,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 from dotenv import load_dotenv
-from ai_summary_generator import qwen_summary, create_mock_summary_with_csv_analysis, _clean_markdown
+from ai_summary_generator import AI_summary, create_mock_summary_with_csv_analysis, _clean_markdown
 from pdf_generator import generate_pdf_report
 
 
@@ -262,7 +262,7 @@ def run_ai_summary_generator(platform_setup, inspections):
         """
         
         try:
-            summary = qwen_summary(prompt)
+            summary = AI_summary(prompt)
             if summary:
                 summary = summary.replace("*", "")
         except Exception as e:
@@ -484,7 +484,7 @@ def run_quick_analysis(platform_setup, inspections):
         """
         
         try:
-            summary = qwen_summary(prompt)
+            summary = AI_summary(prompt)
         except Exception as e:
             print(f"AI API error: {str(e)}")
             summary = None
