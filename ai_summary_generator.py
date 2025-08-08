@@ -39,6 +39,10 @@ def _clean_markdown(text: str) -> str:
 
     # Collapse multiple blank lines
     text = re.sub(r'\n{3,}', '\n\n', text)
+
+     # Remove leading spaces from each line
+    text = "\n".join(line.lstrip() for line in text.splitlines())
+    
     return text.strip()
 
 
