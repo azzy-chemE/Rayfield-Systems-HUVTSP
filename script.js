@@ -1,9 +1,11 @@
+// Tab switching
 document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', function() {
+    tab.addEventListener('click', function () {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
         this.classList.add('active');
-        document.getElementById(this.dataset.tab).classList.add('active');
+        const target = document.getElementById(this.dataset.tab);
+        if (target) target.classList.add('active');
     });
 });
 
@@ -32,58 +34,60 @@ function addAlert(title, description) {
 // Setup Platform form
 const setupForm = document.getElementById('setup-form');
 if (setupForm) {
-    setupForm.addEventListener('submit', async function(e) {
+    setupForm.addEventListener('submit', async function (e) {
         e.preventDefault();
-        
+
         const fileInput = setupForm['site-specs'];
         const file = fileInput.files[0];
-        
+
         if (!file) {
             alert('Please select a CSV file');
             return;
         }
-        
         if (!file.name.toLowerCase().endsWith('.csv')) {
             alert('Please select a CSV file');
             return;
         }
-        
+
         // Show loading state
         const submitButton = setupForm.querySelector('button[type="submit"]');
         const originalText = submitButton.textContent;
         submitButton.textContent = 'Uploading...';
         submitButton.disabled = true;
-        
+
         try {
             // Upload the CSV file
             const formData = new FormData();
             formData.append('file', file);
-            
+
             const uploadResponse = await fetch('/api/upload-csv', {
                 method: 'POST',
                 body: formData
             });
-            
+
             const uploadResult = await uploadResponse.json();
-            
+
             if (uploadResult.success) {
                 platformSetup = {
                     siteType: setupForm['site-type'].value,
                     siteSpecs: file.name,
                     csvData: uploadResult
                 };
-                
+
                 const saveMsgSetup = document.getElementById('saveMessage-setup');
                 saveMsgSetup.classList.add('show');
                 setTimeout(() => {
                     saveMsgSetup.classList.remove('show');
                 }, 2000);
-                
-                addAlert('Platform Setup Saved', `Site type: ${platformSetup.siteType || 'N/A'}<br>CSV file: ${file.name}<br>Rows: ${uploadResult.rows}<br>Columns: ${uploadResult.columns.length}`);
+
+                addAlert(
+                    'Platform Setup Saved',
+                    `Site type: ${platformSetup.siteType || 'N/A'}<br>CSV file: ${file.name}<br>Rows: ${uploadResult.rows}<br>Columns: ${uploadResult.columns.length}`
+                );
             } else {
                 alert(`Upload failed: ${uploadResult.error}`);
             }
-            
+
         } catch (error) {
             console.error('Upload error:', error);
             alert('Failed to upload file. Please try again.');
@@ -92,11 +96,12 @@ if (setupForm) {
             submitButton.disabled = false;
         }
     });
+}
 
 // Insert Inspection Data form
 const inspectionForm = document.getElementById('inspection-form');
 if (inspectionForm) {
-    inspectionForm.addEventListener('submit', function(e) {
+    inspectionForm.addEventListener('submit', function (e) {
         e.preventDefault();
         const inspection = {
             date: inspectionForm['inspection-date'].value,
@@ -117,7 +122,7 @@ if (inspectionForm) {
 // AI Analysis logic
 const runAIButton = document.getElementById('run-ai-analysis');
 if (runAIButton) {
-    runAIButton.addEventListener('click', async function() {
+    runAIButton.addEventListener('click', async function () {
         if (!platformSetup) {
             document.getElementById('ai-result').innerHTML = '<span class="status-critical">Please complete platform setup first.</span>';
             return;
@@ -126,11 +131,11 @@ if (runAIButton) {
             document.getElementById('ai-result').innerHTML = '<span class="status-critical">Please insert inspection data first.</span>';
             return;
         }
-        
+
         // Show loading state
         const aiResult = document.getElementById('ai-result');
         aiResult.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p>Running AI Analysis...</p><p style="font-size: 0.9rem; color: #666;">This may take 10-30 seconds for full analysis with charts</p></div>';
-        
+
         try {
             // Call the Flask API
             const response = await fetch('/api/run-ai-analysis', {
@@ -143,7 +148,7 @@ if (runAIButton) {
                     inspections: inspections
                 })
             });
-            
+
             // Check if response is ok
             if (!response.ok) {
                 if (response.status === 405) {
@@ -152,34 +157,34 @@ if (runAIButton) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
             }
-            
+
             // Check if response has content
             const responseText = await response.text();
             if (!responseText) {
                 throw new Error('Empty response from server');
             }
-            
+
             let result;
             try {
                 result = JSON.parse(responseText);
-                
+
                 // Validate response structure
                 if (!result || typeof result !== 'object') {
                     throw new Error('Invalid response structure: not an object');
                 }
-                
+
                 if (!result.hasOwnProperty('success')) {
                     throw new Error('Invalid response structure: missing success property');
                 }
-                
+
                 if (result.success && !result.hasOwnProperty('summary')) {
                     throw new Error('Invalid response structure: missing summary property');
                 }
-                
+
             } catch (parseError) {
                 throw new Error(`Invalid JSON response: ${parseError.message}`);
             }
-            
+
             if (result.success) {
                 // Display the AI summary
                 let resultHtml = `
@@ -205,7 +210,7 @@ if (runAIButton) {
                         <p><strong>CSV Data:</strong> ${platformSetup.csvData ? `${platformSetup.csvData.rows} rows, ${platformSetup.csvData.columns.length} columns` : 'No CSV data uploaded'}</p>
                     </div>
                 `;
-                
+
                 // Add CSV data analysis section
                 if (result.csv_stats && Object.keys(result.csv_stats).length > 0) {
                     resultHtml += `
@@ -220,7 +225,7 @@ if (runAIButton) {
                         </div>
                     `;
                 }
-                
+
                 // Add charts section if charts are available
                 if (result.charts && result.charts.length > 0) {
                     resultHtml += `
@@ -228,7 +233,7 @@ if (runAIButton) {
                             <h3 style="margin-top: 0; color: #1a1a1a;">Data Analysis Charts</h3>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1rem; margin-top: 1rem;">
                     `;
-                    
+
                     result.charts.forEach(chartPath => {
                         const chartName = chartPath.split('/').pop().replace('.png', '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                         resultHtml += `
@@ -238,14 +243,14 @@ if (runAIButton) {
                             </div>
                         `;
                     });
-                    
+
                     resultHtml += `
                             </div>
                         </div>
                     `;
                 }
-                
-                // Add anomalies table section if available (replacing the duplicate CSV analysis)
+
+                // Add anomalies table section if available
                 if (result.anomalies_table && result.anomalies_table.table_data && result.anomalies_table.table_data.length > 0) {
                     resultHtml += `
                         <div style="background: #fff5f5; padding: 1.5rem; border-radius: 8px; margin-top: 1rem;">
@@ -274,8 +279,7 @@ if (runAIButton) {
                                     </thead>
                                     <tbody>
                     `;
-                    
-                    // Show first 20 anomalies for web display
+
                     const anomaliesToShow = result.anomalies_table.table_data.slice(0, 20);
                     anomaliesToShow.forEach((anomaly, index) => {
                         const rowColor = index % 2 === 0 ? '#f8f9fa' : '#ffffff';
@@ -290,14 +294,13 @@ if (runAIButton) {
                             </tr>
                         `;
                     });
-                    
+
                     resultHtml += `
                                     </tbody>
                                 </table>
                             </div>
                     `;
-                    
-                    // Add note if there are more anomalies
+
                     if (result.anomalies_table.table_data.length > 20) {
                         resultHtml += `
                             <div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-top: 1rem; border-left: 4px solid #ffc107;">
@@ -308,12 +311,12 @@ if (runAIButton) {
                             </div>
                         `;
                     }
-                    
+
                     resultHtml += `
                         </div>
                     `;
                 }
-                
+
                 aiResult.innerHTML = resultHtml;
                 aiStatus = 'analysis-complete';
                 addAlert('AI Analysis Complete', 'Comprehensive analysis generated using Qwen AI model');
@@ -321,7 +324,7 @@ if (runAIButton) {
                 if (result.charts && result.charts.length > 0) {
                     addAlert('Graph Generated Successfully', 'Check graph for anomalies');
                 }
-                
+
                 // Add PDF download button
                 const pdfButton = document.createElement('button');
                 pdfButton.textContent = '📄 Download PDF Report';
@@ -350,19 +353,18 @@ if (runAIButton) {
             aiStatus = 'connection-error';
             addAlert('Connection Error', 'Failed to connect to AI analysis service');
         }
-        
+
         updateStatusTab();
     });
 }
 
-// Add event listener for quick analysis button
+// Quick Analysis
 const quickAIButton = document.getElementById('quick-ai-analysis');
 if (quickAIButton) {
-    quickAIButton.addEventListener('click', async function() {
+    quickAIButton.addEventListener('click', async function () {
         const aiResult = document.getElementById('ai-result');
         aiResult.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p>Running quick analysis...</p></div>';
         try {
-            // Check if platform setup and inspections are available
             if (!platformSetup) {
                 aiResult.innerHTML = '<span class="status-critical">Please complete platform setup first.</span>';
                 return;
@@ -373,33 +375,23 @@ if (quickAIButton) {
             }
             const response = await fetch('/api/quick-ai-analysis', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    platformSetup: platformSetup,
-                    inspections: inspections
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ platformSetup, inspections })
             });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
             const responseText = await response.text();
-            if (!responseText) {
-                throw new Error('Empty response from server');
-            }
+            if (!responseText) throw new Error('Empty response from server');
+
             let result;
             try {
                 result = JSON.parse(responseText);
-                if (!result || typeof result !== 'object') {
-                    throw new Error('Invalid response structure: not an object');
-                }
-                if (!result.hasOwnProperty('success')) {
-                    throw new Error('Invalid response structure: missing success property');
-                }
+                if (!result || typeof result !== 'object') throw new Error('Invalid response structure: not an object');
+                if (!result.hasOwnProperty('success')) throw new Error('Invalid response structure: missing success property');
             } catch (parseError) {
                 throw new Error(`Invalid JSON response: ${parseError.message}`);
             }
+
             if (result.success) {
                 let resultHtml = `
                     <div style="background: #e8f5e8; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -410,11 +402,11 @@ if (quickAIButton) {
                     <div style="background: #e8f4fd; padding: 1rem; border-radius: 8px;">
                         <h4 style="margin-top: 0; color: #1a1a1a;">Key Statistics</h4>
                         <ul style="margin: 0; padding-left: 1.5rem;">
-                            <li>Site Type: ${(result.stats && result.stats.site_type) ? result.stats.site_type : 'Not specified'}</li>
-                            <li>Total Inspections: ${(result.stats && result.stats.inspections_count) ? result.stats.inspections_count : 0}</li>
-                            <li>Critical Issues: ${(result.stats && result.stats.critical_inspections) ? result.stats.critical_inspections : 0}</li>
-                            <li>Concerns: ${(result.stats && result.stats.concern_inspections) ? result.stats.concern_inspections : 0}</li>
-                            <li>Normal Status: ${(result.stats && result.stats.normal_inspections) ? result.stats.normal_inspections : 0}</li>
+                            <li>Site Type: ${platformSetup.siteType || 'Not specified'}</li>
+                            <li>Total Inspections: ${inspections.length}</li>
+                            <li>Critical Issues: ${inspections.filter(i => i.status === 'critical').length}</li>
+                            <li>Concerns: ${inspections.filter(i => i.status === 'concern-single' || i.status === 'concern-multiple').length}</li>
+                            <li>Normal Status: ${inspections.filter(i => i.status === 'normal').length}</li>
                         </ul>
                     </div>
                     <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
@@ -424,26 +416,12 @@ if (quickAIButton) {
                         <p><strong>Inspections:</strong> ${inspections.length} inspection(s) recorded</p>
                         <p><strong>CSV Data:</strong> ${platformSetup.csvData ? `${platformSetup.csvData.rows} rows, ${platformSetup.csvData.columns.length} columns` : 'No CSV data uploaded'}</p>
                     </div>
-                `;
-                if (result.csv_stats && Object.keys(result.csv_stats).length > 0) {
-                    resultHtml += `
-                        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                            <h4 style="margin-top: 0; color: #1a1a1a;">CSV Data Analysis</h4>
-                            <ul style="margin: 0; padding-left: 1.5rem;">
-                                <li><strong>Data Points:</strong> ${result.csv_stats.data_points || 'N/A'}</li>
-                                <li><strong>Features:</strong> ${result.csv_stats.features || 'N/A'}</li>
-                                <li><strong>Target Variable:</strong> ${result.csv_stats.target_variable || 'N/A'}</li>
-                                <li><strong>Date Range:</strong> ${result.csv_stats.date_range || 'N/A'}</li>
-                                <li><strong>File:</strong> ${result.stats.uploaded_filename || 'N/A'}</li>
-                            </ul>
-                        </div>
-                    `;
-                }
-                resultHtml += `
                     <div style="background: #d1ecf1; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
                         <h4 style="margin-top: 0; color: #0c5460;">Quick Analysis Mode</h4>
-                        <p>This was a fast analysis without chart generation. For detailed charts and PDF reports, use the \"Run AI Analysis\" button.</p>
-                        <button onclick=\"runFullAnalysis()\" style=\"background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 0.5rem;\">\n                            🎨 Run Full Analysis with Charts\n                        </button>
+                        <p>This was a fast analysis without chart generation. For detailed charts and PDF reports, use the "Run AI Analysis" button.</p>
+                        <button onclick="runFullAnalysis()" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 0.5rem;">
+                            🎨 Run Full Analysis with Charts
+                        </button>
                     </div>
                 `;
                 aiResult.innerHTML = resultHtml;
@@ -455,7 +433,7 @@ if (quickAIButton) {
                 addAlert('Quick Analysis Failed', result.error);
             }
         } catch (error) {
-            aiResult.innerHTML = `<span class="status-critical">Connection Error: ${error.message}`;
+            aiResult.innerHTML = `<span class="status-critical">Connection Error: ${error.message}</span>`;
             aiStatus = 'connection-error';
             addAlert('Connection Error', 'Failed to connect to quick analysis service');
         }
@@ -465,7 +443,8 @@ if (quickAIButton) {
 
 // Function to run full analysis (called from quick analysis results)
 function runFullAnalysis() {
-    document.getElementById('run-ai-analysis').click();
+    const btn = document.getElementById('run-ai-analysis');
+    if (btn) btn.click();
 }
 
 function updateAlertsTab() {
@@ -511,8 +490,8 @@ function updateStatusTab() {
     statusSummary.innerHTML = html;
 }
 
-// Function to download PDF report
-async function downloadPDFReport(analysisResult, platformSetup) {
+// Function to download PDF report (fix: accept event param)
+async function downloadPDFReport(analysisResult, platformSetup, event) {
     try {
         // Show loading state
         const button = event.target;
@@ -520,7 +499,6 @@ async function downloadPDFReport(analysisResult, platformSetup) {
         button.textContent = '📄 Generating PDF...';
         button.disabled = true;
 
-        // Prepare data for PDF generation
         const pdfData = {
             summary: analysisResult.summary,
             stats: analysisResult.stats,
@@ -529,23 +507,18 @@ async function downloadPDFReport(analysisResult, platformSetup) {
             anomalies_table: analysisResult.anomalies_table || null
         };
 
-        // Call PDF generation endpoint
         const response = await fetch('/api/generate-pdf-report', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(pdfData)
         });
 
         const result = await response.json();
 
         if (result.success) {
-            // Convert base64 to blob and download
             const pdfBlob = base64ToBlob(result.pdf_data, 'application/pdf');
             const url = URL.createObjectURL(pdfBlob);
 
-            // Create and trigger download
             const downloadLink = document.createElement('a');
             downloadLink.href = url;
             downloadLink.download = result.filename;
@@ -554,13 +527,9 @@ async function downloadPDFReport(analysisResult, platformSetup) {
             document.body.removeChild(downloadLink);
             URL.revokeObjectURL(url);
 
-            // Show alert
             addAlert('PDF Report Downloaded', `Report saved as: ${result.filename}`);
 
-            // ✅ Update button text to show it's downloaded
             button.textContent = '📄 Downloaded!';
-
-            // ✅ Reset to default after 3 seconds
             setTimeout(() => {
                 button.textContent = originalText;
                 button.disabled = false;
@@ -570,24 +539,22 @@ async function downloadPDFReport(analysisResult, platformSetup) {
             button.textContent = originalText;
             button.disabled = false;
         }
-
     } catch (error) {
         console.error('PDF download error:', error);
         alert('Failed to generate PDF report. Please try again.');
-        const button = event.target;
-        button.textContent = '📄 Download PDF';
-        button.disabled = false;
+        const button = event?.target;
+        if (button) {
+            button.textContent = '📄 Download PDF';
+            button.disabled = false;
+        }
     }
 }
 
-// Helper function to convert base64 to blob
+// Helper: base64 → Blob
 function base64ToBlob(base64, mimeType) {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
+    for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], { type: mimeType });
-}
 }

@@ -6,7 +6,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 from dotenv import load_dotenv
-from ai_summary_generator import qwen_summary, create_mock_summary_with_csv_analysis
+from ai_summary_generator import qwen_summary, create_mock_summary_with_csv_analysis, _clean_markdown
 from pdf_generator import generate_pdf_report
 
 
@@ -142,28 +142,37 @@ def upload_csv():
 @app.route('/api/run-ai-analysis', methods=['POST'])
 def run_ai_analysis():
     start_time = time.time()
-    
+
     try:
         # Ensure request has JSON content
         if not request.is_json:
             return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
+
         data = request.get_json()
         if not data:
             return jsonify({'error': 'Invalid JSON data'}), 400
-        
+
         platform_setup = data.get('platformSetup')
         inspections = data.get('inspections', [])
-        
+
         if not platform_setup:
             return jsonify({'error': 'Platform setup required'}), 400
-        
+
         if not inspections:
             return jsonify({'error': 'Inspection data required'}), 400
-        
+
+        # Run analysis (this may call the LLM or fallback)
         result = run_ai_summary_generator(platform_setup, inspections)
         elapsed_time = time.time() - start_time
-        
+
+        # Clean the summary (remove markdown artifacts) if present
+        if result and result.get('summary'):
+            try:
+                result['summary'] = _clean_markdown(result['summary'])
+            except Exception as e:
+                print(f"Warning: summary clean failed: {e}")
+
+        # Render timeout-friendly response on Render
         if IS_RENDER and elapsed_time > 25 and result.get('success'):
             return jsonify({
                 'success': True,
@@ -176,12 +185,12 @@ def run_ai_analysis():
                 'note': 'Request was taking too long, returning partial results',
                 'elapsed_time': elapsed_time
             })
-        
-        if result['success']:
+
+        if result.get('success'):
             return jsonify({
                 'success': True,
-                'summary': result['summary'],
-                'stats': result['stats'],
+                'summary': result.get('summary', ''),
+                'stats': result.get('stats', {}),
                 'charts': result.get('charts', []),
                 'analysis_results': result.get('analysis_results', {}),
                 'csv_stats': result.get('csv_stats', {}),
@@ -193,9 +202,9 @@ def run_ai_analysis():
         else:
             return jsonify({
                 'success': False,
-                'error': result['error']
+                'error': result.get('error', 'Unknown error')
             }), 500
-            
+
     except Exception as e:
         print(f"Error in run_ai_analysis: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
