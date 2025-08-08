@@ -46,7 +46,7 @@ def _clean_markdown(text: str) -> str:
     return text.strip()
 
 
-def AI_summary(prompt_text):
+def ai_summary(prompt_text):
     """
     Generate summary using Qwen model via OpenRouter API
     """
@@ -366,7 +366,7 @@ def generate_comprehensive_analysis(csv_data, filename, platform_setup, inspecti
 
         # Generate AI summary
         print("Generating AI summary...")
-        summary = AI_summary(prompt)
+        summary = ai_summary(prompt)
         if summary:
             summary = _clean_markdown(summary)  # CLEAN HERE
 
