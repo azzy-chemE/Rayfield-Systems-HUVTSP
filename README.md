@@ -28,7 +28,9 @@ Open your browser and go to 'https://rayfield-systems-huvtsp.onrender.com'
 Data Analysis, Linear Regression, and Anomaly Detection Features: These are currently functional in a Google CoLab file and will be integrated smoothly into the website's backend soon.
 
 ## Team
-- Harvard Undergraduate Ventures-Tech Summer Program
+
+Harvard Undergraduate Ventures-Tech Summer Program
+
 - Azzy Xiang (Group Founder & Lead Software Engineer)
 - Akash Arun Kumar Soumya (Lead AI/ML Engineer & Software Developer)
 - Pushkar Kamma (Lead Data Visualizer & Software/Frontend Developer)
