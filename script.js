@@ -525,7 +525,8 @@ async function downloadPDFReport(analysisResult, platformSetup) {
             summary: analysisResult.summary,
             stats: analysisResult.stats,
             charts: analysisResult.charts || [],
-            site_name: platformSetup.siteType || 'Energy Site'
+            site_name: platformSetup.siteType || 'Energy Site',
+            anomalies_table: analysisResult.anomalies_table || null
         };
 
         // Call PDF generation endpoint

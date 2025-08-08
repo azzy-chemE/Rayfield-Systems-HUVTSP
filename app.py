@@ -185,6 +185,7 @@ def run_ai_analysis():
                 'charts': result.get('charts', []),
                 'analysis_results': result.get('analysis_results', {}),
                 'csv_stats': result.get('csv_stats', {}),
+                'anomalies_table': result.get('anomalies_table', None),
                 'message': 'AI analysis completed successfully',
                 'note': result.get('note', ''),
                 'elapsed_time': elapsed_time
@@ -250,11 +251,15 @@ def run_ai_summary_generator(platform_setup, inspections):
         
         try:
             summary = qwen_summary(prompt)
+            if summary:
+                summary = summary.replace("*", "")
         except Exception as e:
             print(f"AI API error: {str(e)}")
             summary = None
         
+        # If API fails or returns no summary, use mock summary
         if not summary:
+            print("API failed or returned no summary, using mock summary...")
             summary = create_mock_summary_with_csv_analysis(
                 analysis_results, platform_setup, inspections, "Renewable Energy Site"
             )
@@ -378,6 +383,7 @@ def quick_ai_analysis():
                 'summary': result['summary'],
                 'stats': result['stats'],
                 'csv_stats': result.get('csv_stats', {}),
+                'anomalies_table': result.get('anomalies_table', None),
                 'message': 'Quick analysis completed successfully',
                 'elapsed_time': elapsed_time,
                 'mode': 'quick'
