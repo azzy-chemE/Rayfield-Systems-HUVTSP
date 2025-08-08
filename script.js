@@ -341,7 +341,7 @@ if (runAIButton) {
 
                 aiResult.innerHTML = resultHtml;
                 aiStatus = 'analysis-complete';
-                addAlert('AI Analysis Complete', 'Comprehensive analysis generated using Qwen AI model');
+                addAlert('AI Analysis Complete', 'Comprehensive analysis generated using Gemini 2.0 Experimental AI model');
 
                 if (result.charts && result.charts.length > 0) {
                     addAlert('Graph Generated Successfully', 'Check graph for anomalies');
