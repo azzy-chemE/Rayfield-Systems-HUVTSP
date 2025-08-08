@@ -48,7 +48,7 @@ def _clean_markdown(text: str) -> str:
 
 def ai_summary(prompt_text):
     """
-    Generate summary using Qwen model via OpenRouter API
+    Generate summary using AI model via OpenRouter API
     """
     import time
 
