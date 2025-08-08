@@ -14,7 +14,7 @@ A comprehensive maintenance automation platform for energy plants, process manag
 - **Dynamic Analysis**: AI responses change based on user inputs and site configuration
 - **Professional UI**: Modern web interface with real-time updates
 
-## Quick Start & Access the web interface
+## Quick Start
 Open your browser and go to 'https://rayfield-systems-huvtsp.onrender.com'
 
 ## How to Use
