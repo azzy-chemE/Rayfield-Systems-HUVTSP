@@ -1,4 +1,4 @@
-# Rayfield Systems: Maintenance Automation
+# ChE.OS: Maintenance Automation
 
 A comprehensive maintenance automation platform for energy plants, process managers, maintenance teams, and chemical engineers, with AI-powered analysis and trend reports.
 
